@@ -1,0 +1,567 @@
+'use client';
+
+import Link from 'next/link';
+import { Search, ShoppingCart, Menu, Star, TrendingUp, Zap, Gift, Package } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { useProducts } from '@/app/context/ProductContext';
+
+// Cloudinary image URLs (free stock images)
+const PRODUCT_IMAGES = {
+  phones: 'https://images.unsplash.com/photo-1511707267537-b85faf00021e?w=400&q=80',
+  laptop: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400&q=80',
+  camera: 'https://images.unsplash.com/photo-1606986628025-35d57e735ae0?w=400&q=80',
+  fridge: 'https://images.unsplash.com/photo-1584622181563-430f63602d4b?w=400&q=80',
+  generator: 'https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?w=400&q=80',
+  tablet: 'https://images.unsplash.com/photo-1542286601-b06b24baf08b?w=400&q=80',
+  headphones: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&q=80',
+  speakers: 'https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=400&q=80',
+  powerbank: 'https://images.unsplash.com/photo-1609091839311-d5365f9ff1c5?w=400&q=80',
+  microphone: 'https://images.unsplash.com/photo-1590119957829-11112192aa03?w=400&q=80',
+  tv: 'https://images.unsplash.com/photo-1593642632823-8f785ba67e45?w=400&q=80',
+};
+
+const CATEGORIES_DATA = [
+  {
+    id: 'electronics',
+    name: 'Electronics',
+    icon: '📱',
+    neon: 'from-cyan-400 to-green-400',
+    subcategories: [
+      { id: 'mobile_phones', name: 'Mobile Phones', count: 245, icon: '📱' },
+      { id: 'laptops', name: 'Laptops', count: 89, icon: '💻' },
+      { id: 'cameras', name: 'Cameras', count: 54, icon: '📷' },
+      { id: 'tablets', name: 'Tablets', count: 67, icon: '📱' },
+      { id: 'headphones', name: 'Headphones', count: 123, icon: '🎧' },
+      { id: 'speakers', name: 'Speakers', count: 78, icon: '🔊' },
+      { id: 'power_banks', name: 'Power Banks', count: 95, icon: '🔋' },
+      { id: 'microphone', name: 'Microphones', count: 42, icon: '🎤' },
+      { id: 'televisions', name: 'Televisions (TVs)', count: 38, icon: '📺' },
+    ],
+  },
+  {
+    id: 'appliances',
+    name: 'Appliances',
+    icon: '🏠',
+    neon: 'from-blue-400 to-cyan-400',
+    subcategories: [
+      { id: 'refrigerators', name: 'Refrigerators & Freezers', count: 89, icon: '🧊' },
+      { id: 'ac', name: 'Air Conditioners', count: 76, icon: '❄️' },
+      { id: 'generators', name: 'Generators & Power', count: 76, icon: '⚡' },
+      { id: 'washing_machines', name: 'Washing Machines', count: 54, icon: '🌊' },
+      { id: 'cookers_ovens', name: 'Cookers & Ovens', count: 62, icon: '🔥' },
+      { id: 'cleaning_appliances', name: 'Cleaning Appliances', count: 38, icon: '🧹' },
+      { id: 'fans_cooling', name: 'Fans & Cooling', count: 45, icon: '🌀' },
+      { id: 'inverter_solar', name: 'Inverter & Solar', count: 68, icon: '☀️' },
+      { id: 'kitchen_appliances', name: 'Kitchen Appliances', count: 95, icon: '🍽️' },
+      { id: 'home_appliances', name: 'Home Appliances', count: 72, icon: '🏠' },
+    ],
+  },
+  {
+    id: 'furniture',
+    name: 'Furniture',
+    icon: '🛋️',
+    neon: 'from-orange-400 to-red-400',
+    subcategories: [
+      { id: 'sofas', name: 'Sofas & Chairs', count: 128, icon: '🛋️' },
+      { id: 'beds', name: 'Beds & Mattresses', count: 95, icon: '🛏️' },
+      { id: 'tables', name: 'Tables & Desks', count: 76, icon: '📦' },
+      { id: 'storage', name: 'Storage & Shelves', count: 112, icon: '🗄️' },
+      { id: 'lighting', name: 'Lighting', count: 84, icon: '💡' },
+    ],
+  },
+  {
+    id: 'grocery',
+    name: 'Grocery Store',
+    icon: '🛒',
+    neon: 'from-yellow-400 to-orange-400',
+    subcategories: [
+      { id: 'fresh_produce', name: 'Fresh Produce', count: 234, icon: '🥬' },
+      { id: 'dairy', name: 'Dairy & Eggs', count: 156, icon: '🥛' },
+      { id: 'beverages', name: 'Beverages', count: 198, icon: '🥤' },
+      { id: 'snacks', name: 'Snacks & Treats', count: 267, icon: '🍪' },
+      { id: 'spices', name: 'Spices & Seasonings', count: 89, icon: '🌶️' },
+    ],
+  },
+];
+
+const FEATURED_PRODUCTS: any[] = [];
+
+export default function Home() {
+  const { getProductsByCategory } = useProducts();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeCategory, setActiveCategory] = useState('electronics');
+  const [activeTab, setActiveTab] = useState('all');
+  const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
+  const [expandedMenu, setExpandedMenu] = useState(false);
+
+  const currentCategory = CATEGORIES_DATA.find(c => c.id === activeCategory);
+  
+  const filteredProducts = useMemo(() => {
+    let products = getProductsByCategory(activeCategory);
+    
+    // Filter by selected subcategory
+    if (activeTab !== 'all') {
+      products = products.filter(p => p.subcategory === activeTab);
+    }
+    
+    // Filter by selected brand
+    if (selectedBrand) {
+      products = products.filter(p => p.brand === selectedBrand);
+    }
+
+    if (searchQuery) {
+      products = products.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
+    }
+
+    return products;
+  }, [activeCategory, activeTab, searchQuery, selectedBrand, getProductsByCategory]);
+
+  const formatPrice = (price: number) => {
+    return '₦' + price.toLocaleString();
+  };
+
+  const calculateDiscount = (oldPrice: number, newPrice: number) => {
+    return Math.round(((oldPrice - newPrice) / oldPrice) * 100);
+  };
+
+  return (
+    <div className="min-h-screen bg-white dark:bg-black text-black dark:text-white">
+      {/* Navigation Header */}
+      <header className="sticky top-0 z-50 bg-white/95 dark:bg-black/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 dark:supports-[backdrop-filter]:bg-black/60 shadow-2xl border-b border-green-500/30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo */}
+            <Link href="/" className="flex items-center gap-2 font-bold text-2xl">
+              <span className="text-3xl">🛒</span>
+              <span className="bg-gradient-to-r from-green-400 to-cyan-400 bg-clip-text text-transparent">OpnMart</span>
+            </Link>
+
+            {/* Search Bar */}
+            <div className="hidden md:flex flex-1 max-w-md mx-6">
+              <div className="relative w-full">
+                <Input
+                  type="text"
+                  placeholder="Search products..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full rounded-full bg-gray-100 dark:bg-zinc-900 border border-green-500/50 py-2 pl-4 pr-10 focus:outline-none focus:ring-2 focus:ring-green-500 text-black dark:text-white placeholder-gray-500"
+                />
+                <Search className="absolute right-3 top-2.5 h-5 w-5 text-green-400" />
+              </div>
+            </div>
+
+            {/* Right Menu */}
+            <div className="flex items-center gap-4">
+              <ThemeToggle />
+              <Link
+                href="/cart"
+                className="relative p-2 text-gray-700 dark:text-gray-300 hover:text-green-400 transition"
+              >
+                <ShoppingCart className="h-6 w-6" />
+                <span className="absolute -top-1 -right-1 bg-green-500 text-black text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                  0
+                </span>
+              </Link>
+              <button className="md:hidden p-2 text-gray-700 dark:text-gray-300 hover:text-green-400">
+                <Menu className="h-6 w-6" />
+              </button>
+            </div>
+          </div>
+
+          {/* Mobile Search */}
+          <div className="md:hidden pb-4">
+            <div className="relative">
+              <Input
+                type="text"
+                placeholder="Search products..."
+                className="w-full rounded-full bg-gray-100 dark:bg-zinc-900 border border-green-500/50 py-2 pl-4 pr-10 text-black dark:text-white placeholder-gray-500"
+              />
+              <Search className="absolute right-3 top-2.5 h-5 w-5 text-green-400" />
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Hero Banner - Compact Card */}
+      <section className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-8">
+        <div className="bg-gradient-to-br from-white via-gray-50 to-white dark:from-black dark:via-zinc-900 dark:to-black rounded-3xl p-8 sm:p-10 text-black dark:text-white relative overflow-hidden border border-green-500/30">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,rgba(16,185,129,0.1),transparent)] opacity-40" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(34,197,94,0.1),transparent)] opacity-40" />
+          
+          <div className="relative z-10 flex items-center justify-between gap-4">
+            {/* Left Content */}
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-2">
+                <Zap className="h-5 w-5 text-green-400 animate-pulse" />
+                <span className="text-xs sm:text-sm font-semibold text-green-400 uppercase tracking-widest">MEGA SALE THIS WEEK</span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-bold mb-2">
+                Shop Nigeria's Best
+                <br />
+                <span className="bg-gradient-to-r from-green-400 to-cyan-400 bg-clip-text text-transparent">Electronics & Appliances</span>
+              </h1>
+              <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 max-w-md">
+                Discover thousands of products from trusted sellers. Fast delivery, secure payments, amazing deals.
+              </p>
+            </div>
+            
+            {/* Right Visual */}
+            <div className="hidden sm:block text-5xl opacity-30">📦</div>
+          </div>
+        </div>
+      </section>
+
+      {/* Category Section */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        {/* Main Category Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 md:gap-4 mb-12">
+          {CATEGORIES_DATA.map((category) => (
+            <button
+              key={category.id}
+              onClick={() => {
+                setActiveCategory(category.id);
+                setActiveTab('all');
+              }}
+              className={`relative group px-4 sm:px-6 py-3 sm:py-4 rounded-xl sm:rounded-2xl font-bold text-sm sm:text-lg transition-all duration-500 transform overflow-hidden ${
+                activeCategory === category.id
+                  ? `bg-gradient-to-br ${category.neon} text-black shadow-2xl shadow-green-500/50 scale-105`
+                  : 'bg-gradient-to-br from-gray-100 to-gray-50 dark:from-zinc-800 dark:to-zinc-900 text-black dark:text-white border-2 border-gray-200 dark:border-zinc-700 hover:border-green-500 dark:hover:border-green-500 hover:shadow-xl'
+              }`}
+            >
+              {/* Background animation for active state */}
+              {activeCategory === category.id && (
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse" />
+              )}
+              
+              <div className="relative z-10 flex items-center gap-1 sm:gap-2 flex-1">
+                <span className="text-2xl sm:text-4xl group-hover:scale-125 transition duration-300 flex-shrink-0">{category.icon}</span>
+                <div className="text-left min-w-0">
+                  <div className="text-xs sm:text-base font-bold leading-tight">{category.name}</div>
+                  <div className={`text-[10px] sm:text-xs ${activeCategory === category.id ? 'text-black/70' : 'text-gray-600 dark:text-gray-400'}`}>
+                    {category.subcategories.length} sub
+                  </div>
+                </div>
+                <span className="text-sm sm:text-lg group-hover:translate-x-1 transition duration-300 flex-shrink-0">→</span>
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {/* Vertical Layout: Sidebar + Products */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 lg:gap-8">
+          {/* Left Sidebar - Vertical Subcategory Menu */}
+          <div className="lg:col-span-1">
+            <div className="sticky top-24 max-h-[calc(100vh-120px)] overflow-y-auto scrollbar-hide bg-white/50 dark:bg-zinc-900/30 backdrop-blur-sm rounded-xl border border-gray-200 dark:border-zinc-800 p-4">
+              {/* Header with label */}
+              <div className="flex items-center gap-2 mb-4 pb-4 border-b border-gray-200 dark:border-zinc-800">
+                <div className="w-1 h-4 bg-gradient-to-b from-green-500 to-cyan-500 rounded-full"></div>
+                <p className="text-sm font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest">
+                  {currentCategory?.name}
+                </p>
+              </div>
+              
+              {/* Vertical Tabs Container */}
+              <div className="flex flex-col gap-2">
+                {/* All Category Button */}
+                <button
+                  onClick={() => {
+                    setActiveTab('all');
+                    setSelectedBrand(null);
+                  }}
+                  className={`px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-300 flex items-center gap-2 text-left ${
+                    activeTab === 'all'
+                      ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-black shadow-md shadow-green-500/30'
+                      : 'bg-gray-100 dark:bg-zinc-800/50 text-black dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-zinc-700/50'
+                  }`}
+                >
+                  <span className="text-lg flex-shrink-0">✨</span>
+                  <span className="flex-1">All Products</span>
+                </button>
+
+                {/* Subcategory Buttons - Limited to 5 items */}
+                {currentCategory?.subcategories.slice(0, expandedMenu ? undefined : 5).map((sub) => (
+                  <button
+                    key={sub.id}
+                    onClick={() => {
+                      setActiveTab(sub.id);
+                      setSelectedBrand(null);
+                    }}
+                    className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all duration-300 flex items-center gap-2 text-left ${
+                      activeTab === sub.id
+                        ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-black shadow-md shadow-cyan-500/30'
+                        : 'bg-gray-100 dark:bg-zinc-800/50 text-black dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-zinc-700/50'
+                    }`}
+                  >
+                    <span className="text-base flex-shrink-0">{sub.icon}</span>
+                    <div className="flex-1 text-left flex items-center justify-between gap-2">
+                      <div>{sub.name}</div>
+                      <div className={`text-xs font-normal whitespace-nowrap ${
+                        activeTab === sub.id ? 'text-black/60' : 'text-gray-500 dark:text-gray-500'
+                      }`}>
+                        {sub.count}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+
+                {/* See More Button - Show if more than 5 items */}
+                {currentCategory && currentCategory.subcategories.length > 5 && (
+                  <button
+                    onClick={() => setExpandedMenu(!expandedMenu)}
+                    className="px-4 py-3 rounded-lg text-sm font-semibold transition-all duration-300 flex items-center justify-center gap-2 bg-gradient-to-r from-green-500/20 to-cyan-500/20 text-green-600 dark:text-green-400 hover:from-green-500/40 hover:to-cyan-500/40 border border-green-500/30 dark:border-green-500/50"
+                  >
+                    <span>{expandedMenu ? '↑ See Less' : '↓ See More'}</span>
+                    <span className="text-lg">{expandedMenu ? '⬆' : '⬇'}</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Content - Products Grid */}
+          <div className="lg:col-span-3">
+            {/* Section Header */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-3xl sm:text-4xl font-bold text-black dark:text-white mb-2">
+                    {activeTab === 'all' ? currentCategory?.name : currentCategory?.subcategories.find(s => s.id === activeTab)?.name}
+                  </h2>
+                  <div className="flex items-center gap-3">
+                    <div className="h-1 w-12 bg-gradient-to-r from-green-500 to-cyan-500 rounded-full"></div>
+                    <p className="text-sm font-semibold">
+                      <span className="text-green-500 dark:text-green-400">{filteredProducts.length}</span>
+                      <span className="text-gray-600 dark:text-gray-400 ml-2">available</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Brand Filter - Square Icons Grid */}
+            {activeTab !== 'all' && (
+              <div className="mb-8">
+                <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-widest mb-4">Filter by Brand</p>
+                <div className="flex gap-3 flex-wrap">
+                  {/* Get all unique brands from current subcategory */}
+                  {Array.from(new Set(FEATURED_PRODUCTS.filter(p => p.subcategory === activeTab).map(p => p.brand))).map((brand: any) => {
+                    const brandEmojiMap: Record<string, string> = {
+                      'Samsung': '📱',
+                      'Apple': '🍎',
+                      'Google': '🔵',
+                      'Dell': '💻',
+                      'ASUS': '⚙️',
+                      'Canon': '📷',
+                      'Sony': '🎬',
+                      'LG': '❄️',
+                      'Elepaq': '⚡',
+                      'Honda': '🏍️',
+                      'Bose': '🎵',
+                      'JBL': '🔊',
+                      'Marshall': '🎸',
+                      'Anker': '🔋',
+                      'Audio-Technica': '🎤',
+                      'Shure': '🎙️',
+                      'Tecno': '📲',
+                      'Infinix': '⚡',
+                      'Itel': '🔌',
+                      'Nokia': '📞',
+                      'Huawei': '🌐',
+                      'OPPO': '🎨',
+                      'Xiaomi': '🔴',
+                      'Vivo': '🎭',
+                      'Freeyond': '✨',
+                      'Gionee': '💎',
+                      'HMD': '🏠',
+                      'Umidigi': '🌟',
+                    };
+                    const brandEmoji = brandEmojiMap[brand as string] || '✨';
+
+                    return (
+                      <button
+                        key={brand}
+                        onClick={() => setSelectedBrand(selectedBrand === brand ? null : brand)}
+                        className={`w-16 h-16 sm:w-20 sm:h-20 rounded-xl flex flex-col items-center justify-center gap-1 transition-all duration-300 font-semibold text-xs sm:text-sm ${
+                          selectedBrand === brand
+                            ? 'bg-gradient-to-br from-green-500 to-cyan-500 text-black shadow-lg shadow-green-500/50 scale-105'
+                            : 'bg-gray-100 dark:bg-zinc-800 text-black dark:text-gray-300 hover:bg-green-500/20 dark:hover:bg-green-500/20 border border-gray-200 dark:border-zinc-700'
+                        }`}
+                      >
+                        <span className="text-xl sm:text-2xl">{brandEmoji}</span>
+                        <span className="line-clamp-1">{brand}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Products Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+              {filteredProducts.map((product) => {
+                const discount = product.oldPrice ? calculateDiscount(product.oldPrice, product.price) : 0;
+                return (
+                  <Link
+                    key={product.id}
+                    href={`/products/${product.id}`}
+                    className="group"
+                  >
+                    <div className="bg-white dark:bg-zinc-900 rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition duration-300 border border-gray-200 dark:border-zinc-800 h-full flex flex-col">
+                      {/* Image Section */}
+                      <div className="relative bg-gradient-to-br from-gray-100 to-gray-50 dark:from-zinc-800 dark:to-zinc-900 h-44 sm:h-52 flex items-center justify-center overflow-hidden">
+                        <img
+                          src={product.image}
+                          alt={product.name}
+                          className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
+                        />
+
+                        {/* Overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition" />
+                    
+                    {/* Badges */}
+                    <div className="absolute top-3 right-3 flex flex-col gap-2">
+                      {product.badge && (
+                        <div className="bg-gradient-to-r from-green-500 to-cyan-500 text-black text-xs font-bold px-3 py-1.5 rounded-lg shadow-md shadow-green-500/50 transform group-hover:scale-110 transition">
+                          {product.badge}
+                        </div>
+                      )}
+                      {discount > 0 && (
+                        <div className="bg-red-500 text-white text-xs font-black px-2.5 py-1.5 rounded-lg shadow-md shadow-red-500/50 flex items-center justify-center min-w-11 transform group-hover:scale-110 transition">
+                          -{discount}%
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Quick View Button */}
+                    <button className="absolute bottom-3 left-3 right-3 py-2 bg-gradient-to-r from-green-500 to-cyan-500 text-black rounded-lg font-semibold text-xs opacity-0 group-hover:opacity-100 transition transform group-hover:translate-y-0 translate-y-2 shadow-md shadow-green-500/50">
+                      Quick View
+                    </button>
+                  </div>
+
+                  {/* Product Info */}
+                  <div className="p-4 flex-1 flex flex-col">
+                    {/* Product Name */}
+                    <h3 className="font-bold text-black dark:text-white mb-3 line-clamp-2 group-hover:text-green-500 transition text-sm leading-snug">
+                      {product.name}
+                    </h3>
+
+                    {/* Rating */}
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="flex text-green-400 gap-0.5">
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`h-3 w-3 ${i < Math.floor(product.rating || 4) ? 'fill-green-400' : 'text-gray-400 dark:text-gray-700'}`}
+                          />
+                        ))}
+                      </div>
+                      <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">
+                        ({product.reviews || 0})
+                      </span>
+                    </div>
+
+                    {/* Price Section */}
+                    <div className="mb-4 pb-4 border-b border-gray-200 dark:border-zinc-800">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-2xl font-black text-transparent bg-gradient-to-r from-green-500 to-cyan-500 bg-clip-text">
+                          {formatPrice(product.price)}
+                        </span>
+                        {product.oldPrice && (
+                          <span className="text-xs text-gray-500 dark:text-gray-600 line-through font-medium">
+                            {formatPrice(product.oldPrice)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Add to Cart Button */}
+                    <button className="w-full py-3 bg-gradient-to-r from-green-500 to-cyan-500 hover:from-green-400 hover:to-cyan-400 text-black rounded-xl font-bold text-sm transition transform hover:scale-105 shadow-lg shadow-green-500/40 hover:shadow-green-500/60 mt-auto flex items-center justify-center gap-2 group/btn">
+                      <ShoppingCart className="h-4 w-4 transition group-hover/btn:scale-110" />
+                      <span>Add to Cart</span>
+                    </button>
+                  </div>
+                </div>
+              </Link>
+            );
+          })}
+            </div>
+
+            {filteredProducts.length === 0 && (
+              <div className="text-center py-16">
+                <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-2xl font-bold text-black dark:text-white mb-2">No Products Available</h3>
+                <p className="text-gray-600 dark:text-gray-400 mb-6">Products will appear here once vendors upload them to this category.</p>
+                <p className="text-sm text-gray-500 dark:text-gray-500">Start exploring other categories or check back soon!</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* Call to Action Section */}
+      <section className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-16">
+        <div className="bg-gradient-to-r from-green-500/10 to-cyan-500/10 dark:from-green-500/5 dark:to-cyan-500/5 rounded-3xl p-12 sm:p-16 border border-green-500/20 dark:border-green-500/30 backdrop-blur-sm overflow-hidden group cursor-pointer hover:shadow-2xl hover:shadow-green-500/20 transition duration-500 text-center">
+          <h2 className="text-4xl sm:text-5xl font-bold mb-4 text-black dark:text-white">
+            Become a Vendor
+          </h2>
+          <p className="text-lg text-gray-600 dark:text-gray-400 mb-8 max-w-2xl mx-auto">
+            Grow your business on OpnMart. Reach thousands of customers and manage your inventory with our powerful vendor dashboard.
+          </p>
+          <Link 
+            href="/dashboards/vendor" 
+            className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-green-500 to-cyan-500 text-black rounded-xl font-bold text-lg hover:shadow-lg transition transform hover:scale-105"
+          >
+            Start Selling Now
+            <span className="text-xl">→</span>
+          </Link>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-gray-50 dark:bg-black border-t border-green-500/30 mt-16">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
+            {[
+              {
+                title: 'About OpnMart',
+                links: ['Our Story', 'Careers', 'Press', 'Blog'],
+              },
+              {
+                title: 'Support',
+                links: ['Help Center', 'Track Order', 'Returns', 'Contact'],
+              },
+              {
+                title: 'Policies',
+                links: ['Privacy', 'Terms', 'Shipping', 'Security'],
+              },
+              {
+                title: 'Follow Us',
+                links: ['Facebook', 'Twitter', 'Instagram', 'LinkedIn'],
+              },
+            ].map((section, i) => (
+              <div key={i}>
+                <h4 className="font-bold text-green-400 mb-4">{section.title}</h4>
+                <ul className="space-y-2">
+                  {section.links.map((link, j) => (
+                    <li key={j}>
+                      <a href="#" className="text-gray-600 dark:text-gray-400 hover:text-green-400 transition text-sm">
+                        {link}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+          <div className="border-t border-green-500/30 pt-8 text-center text-gray-400 text-sm">
+            <p className="text-gray-600 dark:text-gray-400">&copy; 2024 OpnMart. All rights reserved. | Proudly serving Nigeria from Computer Village, Lagos.</p>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
