@@ -1,17 +1,35 @@
 'use client';
 
 import { useState } from 'react';
-import { ShoppingBag, Heart, Package, MapPin, LogOut, Menu, X, Star, Download, MessageSquare, ArrowRight, Clock } from 'lucide-react';
+import { ShoppingBag, Heart, Package, MapPin, LogOut, Menu, X, Star, Download, MessageSquare, ArrowRight, Clock, ChevronDown, User, Settings } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function BuyerDashboard() {
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [activeTab, setActiveTab] = useState('orders');
+  const [activeTab, setActiveTab] = useState('overview');
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
   // State for dynamic data
   const [orders, setOrders] = useState<any[]>([]);
   const [wishlist, setWishlist] = useState<any[]>([]);
-  const [addresses, setAddresses] = useState<any[]>([]);
+  const [addresses, setAddresses] = useState([
+    {
+      id: 1,
+      type: 'Home',
+      address: '123 Lekki Phase 1, Lagos, Nigeria',
+      phone: '+234 801 234 5678',
+      default: true,
+    },
+    {
+      id: 2,
+      type: 'Office',
+      address: '456 Victoria Island, Lagos, Nigeria',
+      phone: '+234 802 987 6543',
+      default: false,
+    },
+  ]);
 
   const buyerStats = {
     totalOrders: orders.length,
@@ -29,11 +47,20 @@ export default function BuyerDashboard() {
     }
   };
 
+  const handleLogout = () => {
+    console.log('Logging out...');
+    router.push('/');
+  };
+
+  const handleStartShopping = () => {
+    router.push('/');
+  };
+
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-black text-black dark:text-white">
       {/* Sidebar */}
       <aside className={`${sidebarOpen ? 'w-64' : 'w-20'} bg-white dark:bg-zinc-900 border-r border-gray-200 dark:border-zinc-800 transition-all duration-300 flex flex-col`}>
-        <div className="p-6 border-b border-gray-200 dark:border-zinc-800 flex items-center justify-between">
+        <div className="p-4 flex items-center justify-between">
           <Link href="/">
             {sidebarOpen && <h1 className="text-xl font-bold text-green-500 cursor-pointer hover:text-green-400 transition">OpnMart</h1>}
           </Link>
@@ -44,10 +71,11 @@ export default function BuyerDashboard() {
 
         <nav className="flex-1 p-4 space-y-2">
           {[
-            { id: 'orders', label: 'My Orders', icon: ShoppingBag },
+            { id: 'overview', label: 'Overview', icon: ShoppingBag },
+            { id: 'orders', label: 'My Orders', icon: Package },
             { id: 'wishlist', label: 'Wishlist', icon: Heart },
-            { id: 'tracking', label: 'Track Order', icon: Package },
-            { id: 'addresses', label: 'Addresses', icon: MapPin },
+            { id: 'tracking', label: 'Track Order', icon: Clock },
+            { id: 'settings', label: 'Settings', icon: Settings },
           ].map(item => {
             const Icon = item.icon;
             return (
@@ -66,27 +94,58 @@ export default function BuyerDashboard() {
             );
           })}
         </nav>
-
-        <div className="p-4 border-t border-gray-200 dark:border-zinc-800">
-          <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 transition text-red-500 font-semibold">
-            <LogOut className="h-5 w-5" />
-            {sidebarOpen && <span>Logout</span>}
-          </button>
-        </div>
       </aside>
 
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
         <div className="p-8">
-          {/* Header */}
-          <div className="mb-8">
-            <h2 className="text-4xl font-bold mb-2">My Dashboard</h2>
-            <p className="text-gray-600 dark:text-gray-400">Welcome back, Chinedu! 👋</p>
+          {/* Top Section with Profile */}
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h2 className="text-4xl font-bold mb-2">Welcome back, Chinedu! 👋</h2>
+              <p className="text-gray-600 dark:text-gray-400">Manage your orders, wishlist, and shipping addresses</p>
+            </div>
+            <div className="relative">
+              <button
+                onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+                className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-zinc-800 rounded-lg hover:bg-gray-200 dark:hover:bg-zinc-700 transition"
+              >
+                <div className="w-8 h-8 bg-gradient-to-br from-green-400 to-cyan-400 rounded-full flex items-center justify-center">
+                  <User className="h-5 w-5 text-white" />
+                </div>
+                <span className="font-semibold">Chinedu</span>
+                <ChevronDown className={`h-4 w-4 transition ${profileMenuOpen ? 'rotate-180' : ''}`} />
+              </button>
+              
+              {profileMenuOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-zinc-900 rounded-lg border border-gray-200 dark:border-zinc-800 shadow-lg z-50">
+                  <div className="p-4 border-b border-gray-200 dark:border-zinc-800">
+                    <p className="font-semibold">Chinedu Okafor</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">chinedu@example.com</p>
+                  </div>
+                  <button 
+                    onClick={() => setActiveTab('settings')}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-zinc-800 transition flex items-center gap-2"
+                  >
+                    <Settings className="h-4 w-4" />
+                    Settings
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full text-left px-4 py-2 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-500 transition flex items-center gap-2 border-t border-gray-200 dark:border-zinc-800"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Stats Grid */}
-          {activeTab === 'orders' && (
+          {/* Overview Tab */}
+          {activeTab === 'overview' && (
             <>
+              {/* Stats Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 {[
                   { label: 'Total Orders', value: buyerStats.totalOrders, icon: ShoppingBag, color: 'from-blue-500 to-cyan-500' },
@@ -120,9 +179,12 @@ export default function BuyerDashboard() {
                     <ShoppingBag className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                     <h3 className="text-lg font-semibold text-gray-600 dark:text-gray-400 mb-2">No Orders Yet</h3>
                     <p className="text-gray-500 dark:text-gray-500 mb-4">Start shopping to see your orders here.</p>
-                    <Link href="/products" className="inline-block px-6 py-2 bg-gradient-to-r from-green-500 to-cyan-500 text-black rounded-lg font-bold hover:shadow-lg transition">
+                    <button 
+                      onClick={handleStartShopping}
+                      className="inline-block px-6 py-2 bg-gradient-to-r from-green-500 to-cyan-500 text-black rounded-lg font-bold hover:shadow-lg transition"
+                    >
                       Start Shopping
-                    </Link>
+                    </button>
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -153,7 +215,49 @@ export default function BuyerDashboard() {
             </>
           )}
 
-          {/* Wishlist Tab */}
+          {/* Orders Tab */}
+          {activeTab === 'orders' && (
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 p-6">
+              <h3 className="text-2xl font-bold mb-6">My Orders</h3>
+              {orders.length === 0 ? (
+                <div className="text-center py-12">
+                  <ShoppingBag className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-600 dark:text-gray-400 mb-2">No Orders Yet</h3>
+                  <p className="text-gray-500 dark:text-gray-500 mb-4">Start shopping to see your orders here.</p>
+                  <button 
+                    onClick={handleStartShopping}
+                    className="inline-block px-6 py-2 bg-gradient-to-r from-green-500 to-cyan-500 text-black rounded-lg font-bold hover:shadow-lg transition"
+                  >
+                    Start Shopping
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {orders.map(order => (
+                    <div key={order.id} className="flex items-center justify-between p-4 border border-gray-200 dark:border-zinc-800 rounded-lg hover:shadow-md transition">
+                      <div className="flex items-center gap-4">
+                        <img src={order.image} alt={order.product} className="w-12 h-12 rounded-lg object-cover" />
+                        <div>
+                          <p className="font-semibold">{order.product}</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">{order.vendor}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-6">
+                        <div className="text-right">
+                          <p className="font-semibold">₦{order.amount.toLocaleString()}</p>
+                          <p className="text-xs text-gray-600 dark:text-gray-400">{order.date}</p>
+                        </div>
+                        <span className={`px-4 py-2 rounded-full text-xs font-semibold ${getStatusColor(order.status)}`}>{order.status}</span>
+                        <button className="text-green-500 hover:text-green-600 font-semibold flex items-center gap-1">
+                          View <ArrowRight className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           {activeTab === 'wishlist' && (
             <div>
               <h3 className="text-2xl font-bold mb-6">My Wishlist ({wishlist.length} items)</h3>
@@ -162,9 +266,12 @@ export default function BuyerDashboard() {
                   <Heart className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-gray-600 dark:text-gray-400 mb-2">Your Wishlist is Empty</h3>
                   <p className="text-gray-500 dark:text-gray-500 mb-4">Save items to your wishlist for later.</p>
-                  <Link href="/products" className="inline-block px-6 py-2 bg-gradient-to-r from-green-500 to-cyan-500 text-black rounded-lg font-bold hover:shadow-lg transition">
+                  <button 
+                    onClick={handleStartShopping}
+                    className="inline-block px-6 py-2 bg-gradient-to-r from-green-500 to-cyan-500 text-black rounded-lg font-bold hover:shadow-lg transition"
+                  >
                     Browse Products
-                  </Link>
+                  </button>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -206,9 +313,12 @@ export default function BuyerDashboard() {
                   <Package className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-gray-600 dark:text-gray-400 mb-2">No Orders in Transit</h3>
                   <p className="text-gray-500 dark:text-gray-500 mb-4">Once you place an order, you can track it here.</p>
-                  <Link href="/products" className="inline-block px-6 py-2 bg-gradient-to-r from-green-500 to-cyan-500 text-black rounded-lg font-bold hover:shadow-lg transition">
+                  <button 
+                    onClick={handleStartShopping}
+                    className="inline-block px-6 py-2 bg-gradient-to-r from-green-500 to-cyan-500 text-black rounded-lg font-bold hover:shadow-lg transition"
+                  >
                     Continue Shopping
-                  </Link>
+                  </button>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -238,48 +348,223 @@ export default function BuyerDashboard() {
             </div>
           )}
 
-          {/* Addresses Tab */}
-          {activeTab === 'addresses' && (
+          {/* Profile Tab */}
+          {activeTab === 'profile' && (
             <div>
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-bold">Saved Addresses</h3>
-                <button className="px-6 py-2 bg-gradient-to-r from-green-500 to-cyan-500 text-black rounded-lg font-bold hover:shadow-lg transition">
-                  + Add Address
-                </button>
+              <h3 className="text-2xl font-bold mb-6">My Profile</h3>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Personal Information */}
+                <div className="lg:col-span-2 bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 p-6">
+                  <h4 className="text-xl font-bold mb-6 flex items-center gap-2">
+                    <User className="h-6 w-6 text-green-500" />
+                    Personal Information
+                  </h4>
+                  <div className="space-y-6">
+                    {/* Name Row */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2 block">First Name</label>
+                        <div className="p-3 bg-gray-100 dark:bg-zinc-800 rounded-lg text-gray-700 dark:text-gray-300">
+                          Chinedu
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2 block">Last Name</label>
+                        <div className="p-3 bg-gray-100 dark:bg-zinc-800 rounded-lg text-gray-700 dark:text-gray-300">
+                          Okafor
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Email */}
+                    <div>
+                      <label className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2 block">Email Address</label>
+                      <div className="p-3 bg-gray-100 dark:bg-zinc-800 rounded-lg text-gray-700 dark:text-gray-300">
+                        chinedu@example.com
+                      </div>
+                    </div>
+
+                    {/* Phone */}
+                    <div>
+                      <label className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2 block">Phone Number</label>
+                      <div className="p-3 bg-gray-100 dark:bg-zinc-800 rounded-lg text-gray-700 dark:text-gray-300">
+                        +234 801 234 5678
+                      </div>
+                    </div>
+
+                    {/* Member Since */}
+                    <div>
+                      <label className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2 block">Member Since</label>
+                      <div className="p-3 bg-gray-100 dark:bg-zinc-800 rounded-lg text-gray-700 dark:text-gray-300">
+                        January 15, 2024
+                      </div>
+                    </div>
+
+                    <button className="w-full py-3 bg-gradient-to-r from-green-500 to-cyan-500 text-black rounded-lg font-bold hover:shadow-lg transition">
+                      Edit Profile
+                    </button>
+                  </div>
+                </div>
+
+                {/* Shipping Information */}
+                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 p-6">
+                  <h4 className="text-xl font-bold mb-6 flex items-center gap-2">
+                    <MapPin className="h-6 w-6 text-green-500" />
+                    Shipping Info
+                  </h4>
+                  <div className="space-y-4">
+                    {addresses.filter(a => a.default).map(addr => (
+                      <div key={addr.id} className="bg-gradient-to-br from-green-50 to-cyan-50 dark:from-green-900/20 dark:to-cyan-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
+                        <p className="font-semibold text-sm text-gray-600 dark:text-gray-400 mb-2">DEFAULT ADDRESS</p>
+                        <p className="font-bold mb-2">{addr.type}</p>
+                        <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">{addr.address}</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                          <span>📱</span> {addr.phone}
+                        </p>
+                      </div>
+                    ))}
+                    <button 
+                      onClick={() => setActiveTab('addresses')}
+                      className="w-full py-2 border-2 border-green-500 text-green-500 rounded-lg font-semibold hover:bg-green-500/10 transition text-sm"
+                    >
+                      View All Addresses
+                    </button>
+                  </div>
+                </div>
               </div>
-              {addresses.length === 0 ? (
-                <div className="text-center py-12 bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800">
-                  <MapPin className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-600 dark:text-gray-400 mb-2">No Addresses Saved</h3>
-                  <p className="text-gray-500 dark:text-gray-500 mb-4">Add your delivery addresses for faster checkout.</p>
-                  <button className="inline-block px-6 py-2 bg-gradient-to-r from-green-500 to-cyan-500 text-black rounded-lg font-bold hover:shadow-lg transition">
+            </div>
+          )}
+
+          {/* Settings Tab */}
+          {activeTab === 'settings' && (
+            <div>
+              <h3 className="text-2xl font-bold mb-6">Settings</h3>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Personal Information */}
+                <div className="lg:col-span-2 bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 p-6">
+                  <h4 className="text-xl font-bold mb-6 flex items-center gap-2">
+                    <User className="h-6 w-6 text-green-500" />
+                    Personal Information
+                  </h4>
+                  <div className="space-y-6">
+                    {/* Name Row */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2 block">First Name</label>
+                        <div className="p-3 bg-gray-100 dark:bg-zinc-800 rounded-lg text-gray-700 dark:text-gray-300">
+                          Chinedu
+                        </div>
+                      </div>
+                      <div>
+                        <label className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2 block">Last Name</label>
+                        <div className="p-3 bg-gray-100 dark:bg-zinc-800 rounded-lg text-gray-700 dark:text-gray-300">
+                          Okafor
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Email */}
+                    <div>
+                      <label className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2 block">Email Address</label>
+                      <div className="p-3 bg-gray-100 dark:bg-zinc-800 rounded-lg text-gray-700 dark:text-gray-300">
+                        chinedu@example.com
+                      </div>
+                    </div>
+
+                    {/* Phone */}
+                    <div>
+                      <label className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2 block">Phone Number</label>
+                      <div className="p-3 bg-gray-100 dark:bg-zinc-800 rounded-lg text-gray-700 dark:text-gray-300">
+                        +234 801 234 5678
+                      </div>
+                    </div>
+
+                    {/* Member Since */}
+                    <div>
+                      <label className="text-sm font-semibold text-gray-600 dark:text-gray-400 mb-2 block">Member Since</label>
+                      <div className="p-3 bg-gray-100 dark:bg-zinc-800 rounded-lg text-gray-700 dark:text-gray-300">
+                        January 15, 2024
+                      </div>
+                    </div>
+
+                    <button className="w-full py-3 bg-gradient-to-r from-green-500 to-cyan-500 text-black rounded-lg font-bold hover:shadow-lg transition">
+                      Edit Profile
+                    </button>
+                  </div>
+                </div>
+
+                {/* Shipping Information */}
+                <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 p-6">
+                  <h4 className="text-xl font-bold mb-6 flex items-center gap-2">
+                    <MapPin className="h-6 w-6 text-green-500" />
+                    Shipping Info
+                  </h4>
+                  <div className="space-y-4">
+                    {addresses.filter(a => a.default).map(addr => (
+                      <div key={addr.id} className="bg-gradient-to-br from-green-50 to-cyan-50 dark:from-green-900/20 dark:to-cyan-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
+                        <p className="font-semibold text-sm text-gray-600 dark:text-gray-400 mb-2">DEFAULT ADDRESS</p>
+                        <p className="font-bold mb-2">{addr.type}</p>
+                        <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">{addr.address}</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                          <span>📱</span> {addr.phone}
+                        </p>
+                      </div>
+                    ))}
+                    <button 
+                      onClick={() => setActiveTab('addresses')}
+                      className="w-full py-2 border-2 border-green-500 text-green-500 rounded-lg font-semibold hover:bg-green-500/10 transition text-sm"
+                    >
+                      View All Addresses
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Addresses Section */}
+              <div className="mt-8">
+                <div className="flex items-center justify-between mb-6">
+                  <h4 className="text-xl font-bold flex items-center gap-2">
+                    <MapPin className="h-6 w-6 text-green-500" />
+                    Saved Addresses
+                  </h4>
+                  <button className="px-6 py-2 bg-gradient-to-r from-green-500 to-cyan-500 text-black rounded-lg font-bold hover:shadow-lg transition">
                     + Add Address
                   </button>
                 </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {addresses.map(addr => (
-                    <div key={addr.id} className={`border-2 rounded-2xl p-6 transition ${addr.default ? 'border-green-500 bg-green-500/5' : 'border-gray-200 dark:border-zinc-800'}`}>
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-2">
-                          <MapPin className="h-5 w-5 text-green-500" />
-                          <h4 className="font-bold">{addr.type}</h4>
+                {addresses.length === 0 ? (
+                  <div className="text-center py-12 bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800">
+                    <MapPin className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-gray-600 dark:text-gray-400 mb-2">No Addresses Saved</h3>
+                    <p className="text-gray-500 dark:text-gray-500 mb-4">Add your delivery addresses for faster checkout.</p>
+                    <button className="inline-block px-6 py-2 bg-gradient-to-r from-green-500 to-cyan-500 text-black rounded-lg font-bold hover:shadow-lg transition">
+                      + Add Address
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {addresses.map(addr => (
+                      <div key={addr.id} className={`border-2 rounded-2xl p-6 transition ${addr.default ? 'border-green-500 bg-green-500/5' : 'border-gray-200 dark:border-zinc-800'}`}>
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-2">
+                            <MapPin className="h-5 w-5 text-green-500" />
+                            <h4 className="font-bold">{addr.type}</h4>
+                          </div>
+                          {addr.default && <span className="bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full">Default</span>}
                         </div>
-                        {addr.default && <span className="bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full">Default</span>}
+                        <p className="text-gray-600 dark:text-gray-400 mb-4">{addr.address}</p>
+                        <div className="flex items-center gap-3">
+                          <button className="flex-1 py-2 border border-green-500 text-green-500 rounded-lg font-semibold hover:bg-green-500/10 transition">
+                            Edit
+                          </button>
+                          <button className="flex-1 py-2 border border-red-500 text-red-500 rounded-lg font-semibold hover:bg-red-500/10 transition">
+                            Delete
+                          </button>
+                        </div>
                       </div>
-                      <p className="text-gray-600 dark:text-gray-400 mb-4">{addr.address}</p>
-                      <div className="flex items-center gap-3">
-                        <button className="flex-1 py-2 border border-green-500 text-green-500 rounded-lg font-semibold hover:bg-green-500/10 transition">
-                          Edit
-                        </button>
-                        <button className="flex-1 py-2 border border-red-500 text-red-500 rounded-lg font-semibold hover:bg-red-500/10 transition">
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

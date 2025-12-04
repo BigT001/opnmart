@@ -8,7 +8,8 @@ export interface IProduct extends Document {
   brand: string;
   price: number;
   oldPrice?: number;
-  image: string; // Cloudinary URL
+  image: string; // Cloudinary URL (main image)
+  images?: Array<{ url: string; publicId?: string }>; // Additional product images
   imagePublicId?: string; // Cloudinary public ID for updates/deletions
   rating?: number;
   reviews?: number;
@@ -62,6 +63,15 @@ const ProductSchema = new Schema<IProduct>(
     image: {
       type: String,
       required: [true, 'Product image is required'],
+    },
+    images: {
+      type: [
+        {
+          url: String,
+          publicId: String,
+        },
+      ],
+      default: [],
     },
     imagePublicId: {
       type: String,

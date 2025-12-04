@@ -1,16 +1,21 @@
 'use client';
 
 import { useState } from 'react';
-import { BarChart3, TrendingUp, ShoppingBag, Users, AlertCircle, Settings, LogOut, Menu, X, Eye, Edit, Trash2, Plus, DollarSign, Package, Clock } from 'lucide-react';
+import { BarChart3, TrendingUp, ShoppingBag, Users, AlertCircle, Settings, LogOut, Menu, X, Eye, Edit, Trash2, Plus, DollarSign, Package, Clock, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import ProductUploadModal from '@/components/ProductUploadModal';
 import { useProducts } from '@/app/context/ProductContext';
 
 export default function VendorDashboard() {
-  const { allProducts, addProduct, removeProduct } = useProducts();
+  const { allProducts, addProduct, removeProduct, refetchProducts } = useProducts();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState<any>(null);
+  const [editFormData, setEditFormData] = useState<any>(null);
   const [orders, setOrders] = useState([
     { id: 'ORD001', customer: 'Chinedu Okafor', product: 'Product pending...', amount: 0, status: 'Pending' },
     { id: 'ORD002', customer: 'Amara Eze', product: 'Product pending...', amount: 0, status: 'Processing' },
@@ -39,13 +44,42 @@ export default function VendorDashboard() {
     rating: 4.8,
   };
 
-  const handleProductUpload = (newProduct: any) => {
+  const handleProductUpload = async (newProduct: any) => {
     addProduct(newProduct);
+    await refetchProducts();
+    setUploadModalOpen(false);
   };
 
-  const handleDeleteProduct = (id: number) => {
-    if (confirm('Are you sure you want to delete this product?')) {
-      removeProduct(id);
+  const handleViewProduct = (product: any) => {
+    setSelectedProduct(product);
+    setViewModalOpen(true);
+  };
+
+  const handleEditProduct = (product: any) => {
+    setSelectedProduct(product);
+    setEditFormData({ ...product });
+    setEditModalOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    // In a real app, you'd make an API call to update the product
+    console.log('Saving product:', editFormData);
+    // For now, just close the modal
+    setEditModalOpen(false);
+    setEditFormData(null);
+  };
+
+  const handleDeleteProduct = (product: any) => {
+    setSelectedProduct(product);
+    setDeleteConfirmOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (selectedProduct) {
+      removeProduct(selectedProduct.id);
+      await refetchProducts();
+      setDeleteConfirmOpen(false);
+      setSelectedProduct(null);
     }
   };
 
@@ -225,15 +259,23 @@ export default function VendorDashboard() {
                           <td className="py-4 px-4"><span className={`px-3 py-1 rounded-lg text-sm font-semibold ${stockCount > 20 ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'}`}>{stockCount}</span></td>
                           <td className="py-4 px-4 font-semibold text-green-500">{product.sold || 0}</td>
                           <td className="py-4 px-4 flex items-center gap-2">
-                            <button className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg transition text-blue-500" title="View">
+                            <button 
+                              onClick={() => handleViewProduct(product)}
+                              className="p-2 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition text-blue-500" 
+                              title="View"
+                            >
                               <Eye className="h-4 w-4" />
                             </button>
-                            <button className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg transition text-green-500" title="Edit">
+                            <button 
+                              onClick={() => handleEditProduct(product)}
+                              className="p-2 hover:bg-green-100 dark:hover:bg-green-900/30 rounded-lg transition text-green-500" 
+                              title="Edit"
+                            >
                               <Edit className="h-4 w-4" />
                             </button>
                             <button 
-                              onClick={() => handleDeleteProduct(product.id)}
-                              className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-lg transition text-red-500" 
+                              onClick={() => handleDeleteProduct(product)}
+                              className="p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg transition text-red-500" 
                               title="Delete"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -374,6 +416,192 @@ export default function VendorDashboard() {
         onClose={() => setUploadModalOpen(false)}
         onSubmit={handleProductUpload}
       />
+
+      {/* View Product Modal */}
+      {viewModalOpen && selectedProduct && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl max-w-2xl w-full max-h-96 overflow-y-auto">
+            <div className="p-6 border-b border-gray-200 dark:border-zinc-800 flex items-center justify-between sticky top-0 bg-white dark:bg-zinc-900">
+              <h3 className="text-2xl font-bold flex items-center gap-2">
+                <Eye className="h-6 w-6 text-blue-500" />
+                Product Details
+              </h3>
+              <button onClick={() => setViewModalOpen(false)} className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded">
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 font-semibold mb-1">Product Name</p>
+                  <p className="text-lg font-bold">{selectedProduct.name}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 font-semibold mb-1">Category</p>
+                  <p className="text-lg font-bold capitalize">{selectedProduct.category}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 font-semibold mb-1">Price</p>
+                  <p className="text-lg font-bold text-green-500">₦{selectedProduct.price.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 font-semibold mb-1">Stock</p>
+                  <p className="text-lg font-bold">{selectedProduct.stock || 0}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 font-semibold mb-1">Sold</p>
+                  <p className="text-lg font-bold text-blue-500">{selectedProduct.sold || 0}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 font-semibold mb-1">Brand</p>
+                  <p className="text-lg font-bold">{selectedProduct.brand || 'N/A'}</p>
+                </div>
+              </div>
+              {selectedProduct.description && (
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 font-semibold mb-1">Description</p>
+                  <p className="text-base">{selectedProduct.description}</p>
+                </div>
+              )}
+              {selectedProduct.image && (
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 font-semibold mb-2">Product Image</p>
+                  <img src={selectedProduct.image} alt={selectedProduct.name} className="w-32 h-32 object-cover rounded-lg" />
+                </div>
+              )}
+            </div>
+            <div className="p-6 border-t border-gray-200 dark:border-zinc-800 flex gap-3 justify-end">
+              <button 
+                onClick={() => setViewModalOpen(false)}
+                className="px-6 py-2 rounded-lg font-semibold border border-gray-300 dark:border-zinc-700 hover:bg-gray-100 dark:hover:bg-zinc-800 transition"
+              >
+                Close
+              </button>
+              <button 
+                onClick={() => {
+                  setViewModalOpen(false);
+                  handleEditProduct(selectedProduct);
+                }}
+                className="px-6 py-2 bg-green-500 text-black rounded-lg font-semibold hover:bg-green-600 transition"
+              >
+                Edit Product
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Product Modal */}
+      {editModalOpen && editFormData && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl max-w-2xl w-full max-h-96 overflow-y-auto">
+            <div className="p-6 border-b border-gray-200 dark:border-zinc-800 flex items-center justify-between sticky top-0 bg-white dark:bg-zinc-900">
+              <h3 className="text-2xl font-bold flex items-center gap-2">
+                <Edit className="h-6 w-6 text-green-500" />
+                Edit Product
+              </h3>
+              <button onClick={() => setEditModalOpen(false)} className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded">
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold mb-2">Product Name</label>
+                  <input 
+                    type="text"
+                    value={editFormData.name}
+                    onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-zinc-700 rounded-lg dark:bg-zinc-800 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold mb-2">Brand</label>
+                  <input 
+                    type="text"
+                    value={editFormData.brand || ''}
+                    onChange={(e) => setEditFormData({ ...editFormData, brand: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-zinc-700 rounded-lg dark:bg-zinc-800 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold mb-2">Price (₦)</label>
+                  <input 
+                    type="number"
+                    value={editFormData.price}
+                    onChange={(e) => setEditFormData({ ...editFormData, price: parseFloat(e.target.value) })}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-zinc-700 rounded-lg dark:bg-zinc-800 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold mb-2">Stock</label>
+                  <input 
+                    type="number"
+                    value={editFormData.stock || 0}
+                    onChange={(e) => setEditFormData({ ...editFormData, stock: parseInt(e.target.value) })}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-zinc-700 rounded-lg dark:bg-zinc-800 dark:text-white"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold mb-2">Description</label>
+                <textarea 
+                  value={editFormData.description || ''}
+                  onChange={(e) => setEditFormData({ ...editFormData, description: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-zinc-700 rounded-lg dark:bg-zinc-800 dark:text-white h-24"
+                />
+              </div>
+            </div>
+            <div className="p-6 border-t border-gray-200 dark:border-zinc-800 flex gap-3 justify-end">
+              <button 
+                onClick={() => setEditModalOpen(false)}
+                className="px-6 py-2 rounded-lg font-semibold border border-gray-300 dark:border-zinc-700 hover:bg-gray-100 dark:hover:bg-zinc-800 transition"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleSaveEdit}
+                className="px-6 py-2 bg-green-500 text-black rounded-lg font-semibold hover:bg-green-600 transition"
+              >
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmOpen && selectedProduct && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl max-w-md w-full">
+            <div className="p-6 border-b border-gray-200 dark:border-zinc-800 flex items-center gap-3">
+              <div className="p-3 bg-red-100 dark:bg-red-900/30 rounded-lg">
+                <Trash2 className="h-6 w-6 text-red-500" />
+              </div>
+              <h3 className="text-xl font-bold">Delete Product</h3>
+            </div>
+            <div className="p-6">
+              <p className="text-gray-600 dark:text-gray-400 mb-2">Are you sure you want to delete this product?</p>
+              <p className="font-semibold text-lg mb-4">{selectedProduct.name}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">This action cannot be undone.</p>
+            </div>
+            <div className="p-6 border-t border-gray-200 dark:border-zinc-800 flex gap-3 justify-end">
+              <button 
+                onClick={() => setDeleteConfirmOpen(false)}
+                className="px-6 py-2 rounded-lg font-semibold border border-gray-300 dark:border-zinc-700 hover:bg-gray-100 dark:hover:bg-zinc-800 transition"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleConfirmDelete}
+                className="px-6 py-2 bg-red-500 text-white rounded-lg font-semibold hover:bg-red-600 transition"
+              >
+                Delete Product
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

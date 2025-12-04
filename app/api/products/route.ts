@@ -153,6 +153,69 @@ export async function POST(request: NextRequest) {
     // Connect to MongoDB
     await connectDB();
 
+    // Handle additional product images
+    const additionalImages: Array<{ url: string; publicId?: string }> = [];
+    
+    // Upload additional images (productImage_0, productImage_1, etc.)
+    for (let i = 0; i < 4; i++) {
+      const additionalImage = formData.get(`productImage_${i}`) as File;
+      if (additionalImage && additionalImage.size > 0) {
+        try {
+          const buffer = await additionalImage.arrayBuffer();
+          const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || '';
+          const apiKey = process.env.CLOUDINARY_API_KEY || '';
+          const apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+          if (!apiKey) {
+            return NextResponse.json(
+              { error: 'Cloudinary API key not configured' },
+              { status: 500 }
+            );
+          }
+
+          const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
+          const formDataUpload = new FormData();
+          formDataUpload.append('file', new Blob([buffer], { type: additionalImage.type }), additionalImage.name);
+          formDataUpload.append('api_key', apiKey);
+          formDataUpload.append('folder', 'opnmart/products');
+          formDataUpload.append('timestamp', Math.floor(Date.now() / 1000).toString());
+
+          const crypto = require('crypto');
+          const params: Record<string, string> = {
+            folder: 'opnmart/products',
+            timestamp: Math.floor(Date.now() / 1000).toString(),
+          };
+
+          const paramsStr = Object.keys(params)
+            .sort()
+            .map(key => `${key}=${params[key]}`)
+            .join('&');
+
+          const signature = crypto
+            .createHash('sha256')
+            .update(paramsStr + apiSecret)
+            .digest('hex');
+
+          formDataUpload.append('signature', signature);
+
+          const uploadResponse = await fetch(uploadUrl, {
+            method: 'POST',
+            body: formDataUpload,
+          });
+
+          if (uploadResponse.ok) {
+            const uploadData = await uploadResponse.json();
+            additionalImages.push({
+              url: uploadData.secure_url,
+              publicId: uploadData.public_id,
+            });
+          }
+        } catch (error) {
+          console.warn(`Failed to upload additional image ${i}:`, error);
+        }
+      }
+    }
+
     // Create product in MongoDB
     const product = await Product.create({
       name,
@@ -164,6 +227,7 @@ export async function POST(request: NextRequest) {
       oldPrice,
       stock,
       image: cloudinaryUrl,
+      images: additionalImages,
       imagePublicId,
       badge,
       condition,
@@ -182,6 +246,7 @@ export async function POST(request: NextRequest) {
           name: product.name,
           price: product.price,
           image: product.image,
+          images: product.images,
           category: product.category,
           subcategory: product.subcategory,
           brand: product.brand,
@@ -244,6 +309,7 @@ export async function GET(request: NextRequest) {
           price: product.price,
           oldPrice: product.oldPrice,
           image: product.image,
+          images: product.images || [],
           category: product.category,
           subcategory: product.subcategory,
           brand: product.brand,

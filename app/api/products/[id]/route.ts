@@ -5,12 +5,13 @@ import Product from '@/models/Product';
 // DELETE a product
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     await connectDB();
 
-    const { id } = params;
+    console.log(`[Product API] Deleting product with ID: ${id}`);
 
     // Find and delete the product
     const product = await Product.findByIdAndDelete(id);
@@ -22,10 +23,7 @@ export async function DELETE(
       );
     }
 
-    // TODO: Delete image from Cloudinary if needed
-    // if (product.imagePublicId) {
-    //   await deleteFromCloudinary(product.imagePublicId);
-    // }
+    console.log(`[Product API] Product deleted: ${product.name}`);
 
     return NextResponse.json(
       { message: 'Product deleted successfully' },
@@ -43,16 +41,20 @@ export async function DELETE(
 // GET a single product
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     await connectDB();
-
-    const { id } = params;
+    
+    console.log(`[Product API] Fetching product with ID: ${id}`);
 
     const product = await Product.findById(id).lean();
+    
+    console.log(`[Product API] Query result:`, product ? `Found - ${product.name}` : 'Not found');
 
     if (!product) {
+      console.log(`[Product API] Product not found for ID: ${id}`);
       return NextResponse.json(
         { error: 'Product not found' },
         { status: 404 }
@@ -69,6 +71,7 @@ export async function GET(
           price: product.price,
           oldPrice: product.oldPrice,
           image: product.image,
+          images: product.images || [],
           category: product.category,
           subcategory: product.subcategory,
           brand: product.brand,
@@ -77,6 +80,7 @@ export async function GET(
           reviews: product.reviews,
           badge: product.badge,
           condition: product.condition,
+          specifications: product.specifications,
           vendorId: product.vendorId,
           createdAt: product.createdAt,
           updatedAt: product.updatedAt,
@@ -87,7 +91,7 @@ export async function GET(
   } catch (error) {
     console.error('Fetch product error:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch product' },
+      { error: 'Failed to fetch product', details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }
@@ -96,12 +100,14 @@ export async function GET(
 // UPDATE a product
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     await connectDB();
 
-    const { id } = params;
+    console.log(`[Product API] Updating product with ID: ${id}`);
+
     const updates = await request.json();
 
     const product = await Product.findByIdAndUpdate(id, updates, {
@@ -115,6 +121,8 @@ export async function PUT(
         { status: 404 }
       );
     }
+
+    console.log(`[Product API] Product updated: ${product.name}`);
 
     return NextResponse.json(
       {

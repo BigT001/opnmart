@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useProducts } from '@/app/context/ProductContext';
+import SignUpModal from '@/components/AuthModals/SignUpModal';
+import LoginModal from '@/components/AuthModals/LoginModal';
 
 // Cloudinary image URLs (free stock images)
 const PRODUCT_IMAGES = {
@@ -23,22 +25,22 @@ const PRODUCT_IMAGES = {
   tv: 'https://images.unsplash.com/photo-1593642632823-8f785ba67e45?w=400&q=80',
 };
 
-const CATEGORIES_DATA = [
+const CATEGORIES_CONFIG = [
   {
     id: 'electronics',
     name: 'Electronics',
     icon: '📱',
     neon: 'from-cyan-400 to-green-400',
     subcategories: [
-      { id: 'mobile_phones', name: 'Mobile Phones', count: 245, icon: '📱' },
-      { id: 'laptops', name: 'Laptops', count: 89, icon: '💻' },
-      { id: 'cameras', name: 'Cameras', count: 54, icon: '📷' },
-      { id: 'tablets', name: 'Tablets', count: 67, icon: '📱' },
-      { id: 'headphones', name: 'Headphones', count: 123, icon: '🎧' },
-      { id: 'speakers', name: 'Speakers', count: 78, icon: '🔊' },
-      { id: 'power_banks', name: 'Power Banks', count: 95, icon: '🔋' },
-      { id: 'microphone', name: 'Microphones', count: 42, icon: '🎤' },
-      { id: 'televisions', name: 'Televisions (TVs)', count: 38, icon: '📺' },
+      { id: 'mobile_phones', name: 'Mobile Phones', icon: '📱' },
+      { id: 'televisions', name: 'Televisions (TVs)', icon: '📺' },
+      { id: 'laptops', name: 'Laptops', icon: '💻' },
+      { id: 'tablets', name: 'Tablets', icon: '📱' },
+      { id: 'cameras', name: 'Cameras', icon: '📷' },
+      { id: 'headphones', name: 'Headphones', icon: '🎧' },
+      { id: 'speakers', name: 'Speakers', icon: '🔊' },
+      { id: 'microphones', name: 'Microphones', icon: '🎤' },
+      { id: 'power_banks', name: 'Power Banks', icon: '🔋' },
     ],
   },
   {
@@ -47,16 +49,16 @@ const CATEGORIES_DATA = [
     icon: '🏠',
     neon: 'from-blue-400 to-cyan-400',
     subcategories: [
-      { id: 'refrigerators', name: 'Refrigerators & Freezers', count: 89, icon: '🧊' },
-      { id: 'ac', name: 'Air Conditioners', count: 76, icon: '❄️' },
-      { id: 'generators', name: 'Generators & Power', count: 76, icon: '⚡' },
-      { id: 'washing_machines', name: 'Washing Machines', count: 54, icon: '🌊' },
-      { id: 'cookers_ovens', name: 'Cookers & Ovens', count: 62, icon: '🔥' },
-      { id: 'cleaning_appliances', name: 'Cleaning Appliances', count: 38, icon: '🧹' },
-      { id: 'fans_cooling', name: 'Fans & Cooling', count: 45, icon: '🌀' },
-      { id: 'inverter_solar', name: 'Inverter & Solar', count: 68, icon: '☀️' },
-      { id: 'kitchen_appliances', name: 'Kitchen Appliances', count: 95, icon: '🍽️' },
-      { id: 'home_appliances', name: 'Home Appliances', count: 72, icon: '🏠' },
+      { id: 'refrigerators', name: 'Refrigerators & Freezers', icon: '🧊' },
+      { id: 'ac', name: 'Air Conditioners', icon: '❄️' },
+      { id: 'generators', name: 'Generators & Power', icon: '⚡' },
+      { id: 'washing_machines', name: 'Washing Machines', icon: '🌊' },
+      { id: 'cookers_ovens', name: 'Cookers & Ovens', icon: '🔥' },
+      { id: 'cleaning_appliances', name: 'Cleaning Appliances', icon: '🧹' },
+      { id: 'fans_cooling', name: 'Fans & Cooling', icon: '🌀' },
+      { id: 'inverter_solar', name: 'Inverter & Solar', icon: '☀️' },
+      { id: 'kitchen_appliances', name: 'Kitchen Appliances', icon: '🍽️' },
+      { id: 'home_appliances', name: 'Home Appliances', icon: '🏠' },
     ],
   },
   {
@@ -65,11 +67,11 @@ const CATEGORIES_DATA = [
     icon: '🛋️',
     neon: 'from-orange-400 to-red-400',
     subcategories: [
-      { id: 'sofas', name: 'Sofas & Chairs', count: 128, icon: '🛋️' },
-      { id: 'beds', name: 'Beds & Mattresses', count: 95, icon: '🛏️' },
-      { id: 'tables', name: 'Tables & Desks', count: 76, icon: '📦' },
-      { id: 'storage', name: 'Storage & Shelves', count: 112, icon: '🗄️' },
-      { id: 'lighting', name: 'Lighting', count: 84, icon: '💡' },
+      { id: 'sofas', name: 'Sofas & Chairs', icon: '🛋️' },
+      { id: 'beds', name: 'Beds & Mattresses', icon: '🛏️' },
+      { id: 'tables', name: 'Tables & Desks', icon: '📦' },
+      { id: 'storage', name: 'Storage & Shelves', icon: '🗄️' },
+      { id: 'lighting', name: 'Lighting', icon: '💡' },
     ],
   },
   {
@@ -78,11 +80,11 @@ const CATEGORIES_DATA = [
     icon: '🛒',
     neon: 'from-yellow-400 to-orange-400',
     subcategories: [
-      { id: 'fresh_produce', name: 'Fresh Produce', count: 234, icon: '🥬' },
-      { id: 'dairy', name: 'Dairy & Eggs', count: 156, icon: '🥛' },
-      { id: 'beverages', name: 'Beverages', count: 198, icon: '🥤' },
-      { id: 'snacks', name: 'Snacks & Treats', count: 267, icon: '🍪' },
-      { id: 'spices', name: 'Spices & Seasonings', count: 89, icon: '🌶️' },
+      { id: 'fresh_produce', name: 'Fresh Produce', icon: '🥬' },
+      { id: 'dairy', name: 'Dairy & Eggs', icon: '🥛' },
+      { id: 'beverages', name: 'Beverages', icon: '🥤' },
+      { id: 'snacks', name: 'Snacks & Treats', icon: '🍪' },
+      { id: 'spices', name: 'Spices & Seasonings', icon: '🌶️' },
     ],
   },
 ];
@@ -90,17 +92,36 @@ const CATEGORIES_DATA = [
 const FEATURED_PRODUCTS: any[] = [];
 
 export default function Home() {
-  const { getProductsByCategory } = useProducts();
+  const { allProducts } = useProducts();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('electronics');
   const [activeTab, setActiveTab] = useState('all');
   const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
   const [expandedMenu, setExpandedMenu] = useState(false);
+  const [showSignUpModal, setShowSignUpModal] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+
+  // Build categories with real counts from database
+  const CATEGORIES_DATA = useMemo(() => {
+    return CATEGORIES_CONFIG.map(category => ({
+      ...category,
+      subcategories: category.subcategories.map(sub => ({
+        ...sub,
+        count: allProducts.filter(p => p.subcategory === sub.id).length,
+      })),
+    }));
+  }, [allProducts]);
 
   const currentCategory = CATEGORIES_DATA.find(c => c.id === activeCategory);
   
   const filteredProducts = useMemo(() => {
-    let products = getProductsByCategory(activeCategory);
+    let products = allProducts.filter(p => {
+      // Find which category this subcategory belongs to
+      const category = CATEGORIES_DATA.find(c => 
+        c.subcategories.some(sub => sub.id === p.subcategory)
+      );
+      return category?.id === activeCategory;
+    });
     
     // Filter by selected subcategory
     if (activeTab !== 'all') {
@@ -117,7 +138,7 @@ export default function Home() {
     }
 
     return products;
-  }, [activeCategory, activeTab, searchQuery, selectedBrand, getProductsByCategory]);
+  }, [activeCategory, activeTab, searchQuery, selectedBrand, allProducts, CATEGORIES_DATA]);
 
   const formatPrice = (price: number) => {
     return '₦' + price.toLocaleString();
@@ -134,7 +155,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
-            <Link href="/" className="flex items-center gap-2 font-bold text-2xl">
+            <Link href="/" className="flex items-center gap-2 font-bold text-2xl flex-shrink-0">
               <span className="text-3xl">🛒</span>
               <span className="bg-gradient-to-r from-green-400 to-cyan-400 bg-clip-text text-transparent">OpnMart</span>
             </Link>
@@ -154,7 +175,7 @@ export default function Home() {
             </div>
 
             {/* Right Menu */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
               <ThemeToggle />
               <Link
                 href="/cart"
@@ -165,6 +186,26 @@ export default function Home() {
                   0
                 </span>
               </Link>
+
+              {/* Divider */}
+              <div className="hidden sm:block h-6 w-px bg-green-500/30"></div>
+
+              {/* Auth Buttons */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowLoginModal(true)}
+                  className="px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 border border-green-500/50 hover:border-green-500 hover:bg-green-500/10 dark:hover:bg-green-500/20"
+                >
+                  Sign In
+                </button>
+                <button
+                  onClick={() => setShowSignUpModal(true)}
+                  className="px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 bg-gradient-to-r from-green-500 to-cyan-500 text-black hover:shadow-lg hover:shadow-green-500/50 transform hover:scale-105 active:scale-95"
+                >
+                  Sign Up
+                </button>
+              </div>
+
               <button className="md:hidden p-2 text-gray-700 dark:text-gray-300 hover:text-green-400">
                 <Menu className="h-6 w-6" />
               </button>
@@ -324,30 +365,17 @@ export default function Home() {
           {/* Right Content - Products Grid */}
           <div className="lg:col-span-3">
             {/* Section Header */}
-            <div className="mb-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-3xl sm:text-4xl font-bold text-black dark:text-white mb-2">
-                    {activeTab === 'all' ? currentCategory?.name : currentCategory?.subcategories.find(s => s.id === activeTab)?.name}
-                  </h2>
-                  <div className="flex items-center gap-3">
-                    <div className="h-1 w-12 bg-gradient-to-r from-green-500 to-cyan-500 rounded-full"></div>
-                    <p className="text-sm font-semibold">
-                      <span className="text-green-500 dark:text-green-400">{filteredProducts.length}</span>
-                      <span className="text-gray-600 dark:text-gray-400 ml-2">available</span>
-                    </p>
-                  </div>
-                </div>
-              </div>
+            <div className="mb-8">
+              <h2 className="text-3xl sm:text-4xl font-bold text-black dark:text-white mb-6">
+                {activeTab === 'all' ? currentCategory?.name : currentCategory?.subcategories.find(s => s.id === activeTab)?.name}
+              </h2>
             </div>
 
-            {/* Brand Filter - Square Icons Grid */}
-            {activeTab !== 'all' && (
-              <div className="mb-8">
-                <p className="text-sm font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-widest mb-4">Filter by Brand</p>
-                <div className="flex gap-3 flex-wrap">
-                  {/* Get all unique brands from current subcategory */}
-                  {Array.from(new Set(FEATURED_PRODUCTS.filter(p => p.subcategory === activeTab).map(p => p.brand))).map((brand: any) => {
+            {/* Brand Filter - Square Boxes Grid */}
+            <div className="mb-8">
+              <div className="flex gap-3 flex-wrap">
+                {/* Get all unique brands from current subcategory */}
+                {Array.from(new Set(filteredProducts.map(p => p.brand))).map((brand: any) => {
                     const brandEmojiMap: Record<string, string> = {
                       'Samsung': '📱',
                       'Apple': '🍎',
@@ -397,7 +425,6 @@ export default function Home() {
                   })}
                 </div>
               </div>
-            )}
 
             {/* Products Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
@@ -420,26 +447,26 @@ export default function Home() {
 
                         {/* Overlay */}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition" />
-                    
-                    {/* Badges */}
-                    <div className="absolute top-3 right-3 flex flex-col gap-2">
-                      {product.badge && (
-                        <div className="bg-gradient-to-r from-green-500 to-cyan-500 text-black text-xs font-bold px-3 py-1.5 rounded-lg shadow-md shadow-green-500/50 transform group-hover:scale-110 transition">
-                          {product.badge}
+                        
+                        {/* Badges */}
+                        <div className="absolute top-3 right-3 flex flex-col gap-2">
+                          {product.badge && (
+                            <div className="bg-gradient-to-r from-green-500 to-cyan-500 text-black text-xs font-bold px-3 py-1.5 rounded-lg shadow-md shadow-green-500/50 transform group-hover:scale-110 transition">
+                              {product.badge}
+                            </div>
+                          )}
+                          {discount > 0 && (
+                            <div className="bg-red-500 text-white text-xs font-black px-2.5 py-1.5 rounded-lg shadow-md shadow-red-500/50 flex items-center justify-center min-w-11 transform group-hover:scale-110 transition">
+                              -{discount}%
+                            </div>
+                          )}
                         </div>
-                      )}
-                      {discount > 0 && (
-                        <div className="bg-red-500 text-white text-xs font-black px-2.5 py-1.5 rounded-lg shadow-md shadow-red-500/50 flex items-center justify-center min-w-11 transform group-hover:scale-110 transition">
-                          -{discount}%
-                        </div>
-                      )}
-                    </div>
 
-                    {/* Quick View Button */}
-                    <button className="absolute bottom-3 left-3 right-3 py-2 bg-gradient-to-r from-green-500 to-cyan-500 text-black rounded-lg font-semibold text-xs opacity-0 group-hover:opacity-100 transition transform group-hover:translate-y-0 translate-y-2 shadow-md shadow-green-500/50">
-                      Quick View
-                    </button>
-                  </div>
+                        {/* Quick View Button */}
+                        <button className="absolute bottom-3 left-3 right-3 py-2 bg-gradient-to-r from-green-500 to-cyan-500 text-black rounded-lg font-semibold text-xs opacity-0 group-hover:opacity-100 transition transform group-hover:translate-y-0 translate-y-2 shadow-md shadow-green-500/50">
+                          Quick View
+                        </button>
+                      </div>
 
                   {/* Product Info */}
                   <div className="p-4 flex-1 flex flex-col">
@@ -561,6 +588,24 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      {/* Auth Modals */}
+      <SignUpModal
+        isOpen={showSignUpModal}
+        onClose={() => setShowSignUpModal(false)}
+        onSwitchToLogin={() => {
+          setShowSignUpModal(false);
+          setShowLoginModal(true);
+        }}
+      />
+      <LoginModal
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        onSwitchToSignUp={() => {
+          setShowLoginModal(false);
+          setShowSignUpModal(true);
+        }}
+      />
     </div>
   );
 }
