@@ -89,8 +89,9 @@ export default function LoginPage() {
         password: '',
       });
 
+      const buyerId = data.buyer._id;
       setTimeout(() => {
-        router.push('/dashboards/buyer');
+        window.location.href = `/dashboards/buyer/${buyerId}`;
       }, 1500);
     } catch (err: any) {
       setError(err.message || 'An error occurred. Please try again.');

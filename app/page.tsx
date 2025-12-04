@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { Search, ShoppingCart, Menu, Star, TrendingUp, Zap, Gift, Package } from 'lucide-react';
-import { useState, useMemo } from 'react';
+import { Search, ShoppingCart, Menu, Star, TrendingUp, Zap, Gift, Package, User, LogOut, ChevronDown } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
@@ -93,6 +94,7 @@ const FEATURED_PRODUCTS: any[] = [];
 
 export default function Home() {
   const { allProducts } = useProducts();
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('electronics');
   const [activeTab, setActiveTab] = useState('all');
@@ -100,6 +102,101 @@ export default function Home() {
   const [expandedMenu, setExpandedMenu] = useState(false);
   const [showSignUpModal, setShowSignUpModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [buyer, setBuyer] = useState<any>(null);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Function to check session
+  const checkSession = async () => {
+    try {
+      console.log('[HOME PAGE] Checking session...');
+      const response = await fetch('/api/auth/session', {
+        credentials: 'include', // IMPORTANT: Include cookies in the request
+      });
+      const data = await response.json();
+      console.log('[HOME PAGE] Session response:', data);
+      
+      if (data.buyer) {
+        console.log('[HOME PAGE] User logged in:', data.buyer.email);
+        setBuyer(data.buyer);
+        setShowSignUpModal(false);
+        setShowLoginModal(false);
+      } else {
+        console.log('[HOME PAGE] No user in session');
+        setBuyer(null);
+      }
+    } catch (error) {
+      console.error('[HOME PAGE] Failed to check session:', error);
+      setBuyer(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Check if user is logged in on mount and when page becomes visible
+  useEffect(() => {
+    checkSession();
+
+    // Also check when page becomes visible (e.g., after returning from another page)
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log('[HOME PAGE] Page became visible, refreshing session...');
+        checkSession();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
+  const checkSessionAfterAuth = async () => {
+    try {
+      console.log('[HOME PAGE] Refreshing session after auth...');
+      const response = await fetch('/api/auth/session');
+      const data = await response.json();
+      console.log('[HOME PAGE] Refreshed session response:', data);
+      
+      if (data.buyer) {
+        console.log('[HOME PAGE] User now logged in:', data.buyer.email);
+        setBuyer(data.buyer);
+        setShowSignUpModal(false);
+        setShowLoginModal(false);
+      } else {
+        console.log('[HOME PAGE] Still no user after auth');
+        setBuyer(null);
+      }
+    } catch (error) {
+      console.error('[HOME PAGE] Failed to refresh session:', error);
+      setBuyer(null);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
+    setBuyer(null);
+    setShowProfileMenu(false);
+    router.push('/');
+  };
+
+  const handleProfileClick = () => {
+    console.log('[HOME PAGE] handleProfileClick called');
+    console.log('[HOME PAGE] buyer._id:', buyer?._id);
+    
+    if (buyer && buyer._id) {
+      const dashboardUrl = `/dashboards/buyer/${buyer._id}`;
+      console.log('[HOME PAGE] Navigating to:', dashboardUrl);
+      setShowProfileMenu(false);
+      
+      // Use window.location for hard redirect to ensure it works
+      window.location.href = dashboardUrl;
+    } else {
+      console.error('[HOME PAGE] No buyer or buyer._id found');
+    }
+  };
 
   // Build categories with real counts from database
   const CATEGORIES_DATA = useMemo(() => {
@@ -190,21 +287,66 @@ export default function Home() {
               {/* Divider */}
               <div className="hidden sm:block h-6 w-px bg-green-500/30"></div>
 
-              {/* Auth Buttons */}
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setShowLoginModal(true)}
-                  className="px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 border border-green-500/50 hover:border-green-500 hover:bg-green-500/10 dark:hover:bg-green-500/20"
-                >
-                  Sign In
-                </button>
-                <button
-                  onClick={() => setShowSignUpModal(true)}
-                  className="px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 bg-gradient-to-r from-green-500 to-cyan-500 text-black hover:shadow-lg hover:shadow-green-500/50 transform hover:scale-105 active:scale-95"
-                >
-                  Sign Up
-                </button>
-              </div>
+              {/* Profile Menu or Auth Buttons */}
+              {buyer ? (
+                // Logged In - Account Button with Avatar
+                <div className="relative">
+                  <button
+                    onClick={() => setShowProfileMenu(!showProfileMenu)}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-br from-green-500 to-cyan-500 text-black hover:shadow-lg hover:shadow-green-500/50 transition-all duration-300 font-semibold text-sm"
+                    title={`${buyer.firstName} ${buyer.lastName}`}
+                  >
+                    <div className="flex items-center justify-center h-6 w-6 rounded-full bg-black/20 font-bold text-xs">
+                      {buyer.firstName.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="hidden sm:inline">Account</span>
+                    <ChevronDown className={`h-4 w-4 transition-transform ${showProfileMenu ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  {showProfileMenu && (
+                    <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-zinc-900 rounded-lg shadow-xl border border-green-500/30 z-50 overflow-hidden">
+                      <div className="px-4 py-3 border-b border-green-500/20 bg-gray-50 dark:bg-zinc-800">
+                        <p className="text-sm font-semibold text-black dark:text-white">{buyer.firstName} {buyer.lastName}</p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">{buyer.email}</p>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          console.log('[HOME PAGE] Dashboard button clicked, event:', e);
+                          handleProfileClick();
+                        }}
+                        className="w-full text-left px-4 py-3 text-sm font-semibold text-black dark:text-white hover:bg-green-50 dark:hover:bg-green-500/10 flex items-center gap-2 transition-colors"
+                      >
+                        <User className="h-4 w-4 text-green-500" />
+                        My Dashboard
+                      </button>
+                      <button
+                        onClick={handleLogout}
+                        className="w-full text-left px-4 py-3 text-sm font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 flex items-center gap-2 transition-colors"
+                      >
+                        <LogOut className="h-4 w-4" />
+                        Logout
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                // Not Logged In - Clear Minimal Buttons
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowLoginModal(true)}
+                    className="px-3 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-all duration-300 text-green-600 dark:text-green-400 hover:bg-green-500/10 dark:hover:bg-green-500/20 border border-green-500/50 hover:border-green-500 hover:text-green-700 dark:hover:text-green-300"
+                  >
+                    Sign In
+                  </button>
+                  <button
+                    onClick={() => setShowSignUpModal(true)}
+                    className="px-3 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-all duration-300 bg-gradient-to-r from-green-500 to-cyan-500 text-black hover:shadow-lg hover:shadow-green-500/50 transform hover:scale-105 active:scale-95"
+                  >
+                    Sign Up
+                  </button>
+                </div>
+              )}
 
               <button className="md:hidden p-2 text-gray-700 dark:text-gray-300 hover:text-green-400">
                 <Menu className="h-6 w-6" />

@@ -85,6 +85,7 @@ export default function SignUpModal({ isOpen, onClose, onSwitchToLogin }: SignUp
 
     setLoading(true);
     try {
+      console.log('[SIGNUP MODAL] Submitting signup form...');
       const response = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -92,14 +93,19 @@ export default function SignUpModal({ isOpen, onClose, onSwitchToLogin }: SignUp
       });
 
       const data = await response.json();
+      console.log('[SIGNUP MODAL] Signup response status:', response.status);
 
       if (!response.ok) {
+        console.error('[SIGNUP MODAL] Signup failed:', data.error);
         setErrors({ submit: data.error || 'Failed to create account' });
         setLoading(false);
         return;
       }
 
+      console.log('[SIGNUP MODAL] Signup successful!');
       setSuccessMessage('Account created successfully! Redirecting to login...');
+      setLoading(false);
+      
       setTimeout(() => {
         onClose();
         onSwitchToLogin();
@@ -115,6 +121,7 @@ export default function SignUpModal({ isOpen, onClose, onSwitchToLogin }: SignUp
         setSuccessMessage('');
       }, 2000);
     } catch (error) {
+      console.error('[SIGNUP MODAL] Error:', error);
       setErrors({ submit: 'An error occurred. Please try again.' });
       setLoading(false);
     }

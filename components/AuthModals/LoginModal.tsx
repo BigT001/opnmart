@@ -45,29 +45,40 @@ export default function LoginModal({ isOpen, onClose, onSwitchToSignUp }: LoginM
 
     setLoading(true);
     try {
+      console.log('[LOGIN MODAL] Submitting login form...');
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
+        credentials: 'include', // IMPORTANT: Include credentials to set cookies
       });
 
       const data = await response.json();
+      console.log('[LOGIN MODAL] Login response status:', response.status);
+      console.log('[LOGIN MODAL] Login response data:', data);
+      console.log('[LOGIN MODAL] Response headers - Set-Cookie:', response.headers.get('set-cookie'));
 
       if (!response.ok) {
+        console.error('[LOGIN MODAL] Login failed:', data.error);
         setErrors({ submit: data.error || 'Failed to login' });
         setLoading(false);
         return;
       }
 
-      // Store buyer data in localStorage
-      if (rememberMe) {
-        localStorage.setItem('buyer', JSON.stringify(data.buyer));
-      }
-
-      // Redirect to buyer dashboard
+      console.log('[LOGIN MODAL] Login successful!');
+      const buyerId = data.buyer._id;
+      console.log('[LOGIN MODAL] Buyer ID:', buyerId);
+      console.log('[LOGIN MODAL] Cookies after login:', document.cookie);
+      
+      // Close modal
       onClose();
-      router.push('/dashboards/buyer');
+      
+      // Use window.location for a hard redirect to ensure proper page load
+      console.log('[LOGIN MODAL] Redirecting to dashboard...');
+      window.location.href = `/dashboards/buyer/${buyerId}`;
+      
     } catch (error) {
+      console.error('[LOGIN MODAL] Error:', error);
       setErrors({ submit: 'An error occurred. Please try again.' });
       setLoading(false);
     }

@@ -95,17 +95,16 @@ const BuyerSchema = new Schema<IBuyer>(
 );
 
 // Hash password before saving
-BuyerSchema.pre<IBuyer>('save', async function (next) {
+BuyerSchema.pre('save', async function (this: any) {
   if (!this.isModified('password')) {
-    return next();
+    return;
   }
 
   try {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
-    next();
   } catch (error: any) {
-    next(error);
+    throw error;
   }
 });
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import Buyer from '@/models/Buyer';
+import { generateToken, getAuthCookieHeader } from '@/lib/jwt';
 
 // Sign Up
 export async function POST(req: NextRequest) {
@@ -23,6 +24,8 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const { firstName, lastName, email, phone, phonePrefix, password, confirmPassword } = body;
+
+    console.log('[SIGNUP API] Signup attempt for:', email);
 
     // Validation
     if (!firstName || !lastName || !email || !phone || !password || !confirmPassword || !phonePrefix) {
@@ -124,12 +127,18 @@ export async function POST(req: NextRequest) {
     });
 
     await buyer.save();
+    console.log('[SIGNUP API] Buyer created successfully:', email);
 
     // Don't return password
     const buyerResponse = buyer.toObject();
     delete (buyerResponse as any).password;
 
-    return NextResponse.json(
+    // Generate JWT token
+    const token = generateToken(buyer._id.toString(), buyer.email);
+    console.log('[SIGNUP API] JWT token generated for userId:', buyer._id);
+
+    // Create response with cookie header
+    const response = NextResponse.json(
       {
         success: true,
         message: 'Account created successfully',
@@ -137,8 +146,15 @@ export async function POST(req: NextRequest) {
       },
       { status: 201 }
     );
+
+    // Set secure httpOnly cookie via Set-Cookie header
+    const cookieHeader = getAuthCookieHeader(token);
+    console.log('[SIGNUP API] Setting cookie header');
+    response.headers.set('Set-Cookie', cookieHeader);
+
+    return response;
   } catch (error: any) {
-    console.error('Sign up error:', error);
+    console.error('[SIGNUP API] Error:', error);
 
     if (error.code === 11000) {
       return NextResponse.json(
