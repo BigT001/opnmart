@@ -345,6 +345,12 @@ export default function Home() {
                   >
                     Sign Up
                   </button>
+                  <Link
+                    href="/auth/vendor-signup"
+                    className="px-3 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-all duration-300 border border-green-500 text-green-500 hover:bg-green-500 hover:text-black active:scale-95"
+                  >
+                    Become a Vendor
+                  </Link>
                 </div>
               )}
 
