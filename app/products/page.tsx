@@ -1,23 +1,20 @@
 ﻿'use client';
 
-import { useState, useMemo } from 'react';
-import { Search, ChevronDown, X } from 'lucide-react';
+import { useState, useMemo, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { Search, ChevronDown, X, ShoppingCart } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useProducts } from '@/app/context/ProductContext';
+import { useCart } from '@/app/context/CartContext';
 import Link from 'next/link';
+import ProductCard from '@/components/ProductCard';
 
 const CONDITIONS = ['Brand New', 'UK Used', 'Refurbished', 'Used'];
 
-const PRICE_RANGES = [
-  { label: 'Under ₦50,000', min: 0, max: 50000 },
-  { label: '₦50,000 - ₦100,000', min: 50000, max: 100000 },
-  { label: '₦100,000 - ₦250,000', min: 100000, max: 250000 },
-  { label: '₦250,000 - ₦500,000', min: 250000, max: 500000 },
-  { label: 'Above ₦500,000', min: 500000, max: Infinity },
-];
-
-export default function ProductsPage() {
+function ProductsPageContent() {
   const { allProducts } = useProducts();
+  const { addToCart } = useCart();
+  const searchParams = useSearchParams();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedConditions, setSelectedConditions] = useState<string[]>([]);
   const [selectedPriceRange, setSelectedPriceRange] = useState<{ min: number; max: number } | null>(
@@ -25,6 +22,82 @@ export default function ProductsPage() {
   );
   const [selectedBrand, setSelectedBrand] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [expandedFilters, setExpandedFilters] = useState({
+    price: true,
+    condition: true,
+    specs: true,
+  });
+  const [selectedSpecifications, setSelectedSpecifications] = useState<Record<string, string[]>>({});
+
+  // Read brand from URL query parameter on mount
+  useEffect(() => {
+    const brandParam = searchParams.get('brand');
+    if (brandParam) {
+      setSelectedBrand(decodeURIComponent(brandParam));
+    }
+  }, [searchParams]);
+
+  // Calculate dynamic price ranges based on products
+  const dynamicPriceRanges = useMemo(() => {
+    const productsToAnalyze = selectedBrand 
+      ? allProducts.filter(p => p.brand === selectedBrand)
+      : allProducts;
+
+    if (productsToAnalyze.length === 0) return [];
+
+    const prices = productsToAnalyze.map(p => p.price).sort((a, b) => a - b);
+    const minPrice = prices[0];
+    const maxPrice = prices[prices.length - 1];
+    
+    // Intelligently detect scale (thousands or millions)
+    const isMillionScale = maxPrice >= 1000000;
+    
+    let roundedMin, roundedMax, rangeSize;
+    
+    if (isMillionScale) {
+      // For millions, round to nearest 100k
+      roundedMin = Math.floor(minPrice / 100000) * 100000;
+      roundedMax = Math.ceil(maxPrice / 100000) * 100000;
+    } else {
+      // For thousands, round to nearest 10k
+      roundedMin = Math.floor(minPrice / 10000) * 10000;
+      roundedMax = Math.ceil(maxPrice / 10000) * 10000;
+    }
+    
+    const priceRange = roundedMax - roundedMin;
+    rangeSize = Math.ceil(priceRange / 5);
+
+    // Create 5 price ranges
+    const ranges = [];
+
+    for (let i = 0; i < 5; i++) {
+      const min = roundedMin + (i * rangeSize);
+      const max = i === 4 ? Infinity : roundedMin + ((i + 1) * rangeSize);
+      
+      const formatPrice = (price: number) => {
+        if (price === Infinity) return '';
+        
+        if (isMillionScale && price >= 1000000) {
+          // Format as millions with 1 decimal place
+          const millions = (price / 1000000).toFixed(1);
+          return `₦${millions}M`;
+        } else {
+          // Format as thousands with commas
+          return '₦' + Math.round(price).toLocaleString();
+        }
+      };
+
+      const label = i === 0
+        ? `Under ${formatPrice(max)}`
+        : i === 4
+        ? `${formatPrice(min)} & Above`
+        : `${formatPrice(min)} - ${formatPrice(max)}`;
+
+      ranges.push({ label, min, max });
+    }
+
+    return ranges;
+  }, [allProducts, selectedBrand]);
 
   const filteredProducts = useMemo(() => {
     let products = [...allProducts];
@@ -50,20 +123,59 @@ export default function ProductsPage() {
       products = products.filter((p) => p.brand === selectedBrand);
     }
 
+    // Apply specification filters
+    if (Object.keys(selectedSpecifications).length > 0) {
+      products = products.filter(product => {
+        return Object.entries(selectedSpecifications).every(([specKey, specValues]) => {
+          if (specValues.length === 0) return true;
+          const productValue = product.specifications?.[specKey];
+          return specValues.includes(productValue);
+        });
+      });
+    }
+
     return products;
-  }, [allProducts, searchQuery, selectedConditions, selectedPriceRange, selectedBrand]);
+  }, [allProducts, searchQuery, selectedConditions, selectedPriceRange, selectedBrand, selectedSpecifications]);
 
   const brands = useMemo(
     () => [...new Set(allProducts.map((p) => p.brand))].filter(Boolean) as string[],
     [allProducts]
   );
 
-  const formatPrice = (price: number) => '₦' + price.toLocaleString();
+  // Extract dynamic specification filters based on selected brand
+  const specificationFilters = useMemo(() => {
+    const specs: Record<string, Set<string>> = {};
+    
+    const brandProducts = selectedBrand 
+      ? filteredProducts.filter(p => p.brand === selectedBrand)
+      : filteredProducts;
 
-  const calculateDiscount = (oldPrice: number, newPrice: number) => {
-    if (!oldPrice) return 0;
-    return Math.round(((oldPrice - newPrice) / oldPrice) * 100);
-  };
+    brandProducts.forEach(product => {
+      if (product.specifications) {
+        Object.entries(product.specifications).forEach(([key, value]) => {
+          // Include string values and convert other types to string
+          const stringValue = String(value);
+          if (stringValue && !['true', 'false'].includes(stringValue.toLowerCase())) {
+            if (!specs[key]) specs[key] = new Set();
+            specs[key].add(stringValue);
+          }
+        });
+      }
+    });
+
+    // Convert sets to sorted arrays, exclude certain keys
+    const excludeKeys = ['imei_confirmed', 'condition_details', 'model_number', 'warranty_months', 'color'];
+    const result: Record<string, string[]> = {};
+    
+    Object.entries(specs).forEach(([key, values]) => {
+      // Show specs with 2+ values, or all specs if brand has only 1-2 products
+      if (!excludeKeys.includes(key) && (values.size > 1 || brandProducts.length <= 2)) {
+        result[key] = Array.from(values).sort();
+      }
+    });
+
+    return result;
+  }, [selectedBrand, filteredProducts]);
 
   const sidebarClasses = sidebarOpen
     ? 'block md:col-span-1 bg-gray-50 dark:bg-zinc-900 rounded-lg p-6 h-fit sticky top-24'
@@ -118,89 +230,170 @@ export default function ProductsPage() {
             </div>
 
             <div className="mb-6">
-              <h4 className="font-semibold mb-3 text-green-400">Price Range</h4>
-              <div className="space-y-2">
-                {PRICE_RANGES.map((range) => (
-                  <label key={range.label} className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="price"
-                      checked={
-                        selectedPriceRange?.min === range.min &&
-                        selectedPriceRange?.max === range.max
-                      }
-                      onChange={() => setSelectedPriceRange(range)}
-                      className="w-4 h-4 rounded border-gray-300"
-                    />
-                    <span className="text-sm">{range.label}</span>
-                  </label>
-                ))}
-                {selectedPriceRange && (
-                  <button
-                    onClick={() => setSelectedPriceRange(null)}
-                    className="text-xs text-green-500 hover:text-green-400 mt-2 font-semibold"
-                  >
-                    Clear Price Filter
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <div className="mb-6">
-              <h4 className="font-semibold mb-3 text-green-400">Condition</h4>
-              <div className="space-y-2">
-                {CONDITIONS.map((condition) => (
-                  <label key={condition} className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={selectedConditions.includes(condition)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedConditions([...selectedConditions, condition]);
-                        } else {
-                          setSelectedConditions(
-                            selectedConditions.filter((c) => c !== condition)
-                          );
+              <button
+                onClick={() =>
+                  setExpandedFilters({ ...expandedFilters, price: !expandedFilters.price })
+                }
+                className="flex items-center justify-between w-full font-semibold mb-3 text-green-400 hover:text-green-300 transition"
+              >
+                <span>Price Range</span>
+                <ChevronDown
+                  className={`h-5 w-5 transition-transform ${
+                    expandedFilters.price ? 'transform rotate-180' : ''
+                  }`}
+                />
+              </button>
+              {expandedFilters.price && (
+                <div className="space-y-2">
+                  {dynamicPriceRanges.map((range) => (
+                    <label key={range.label} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="price"
+                        checked={
+                          selectedPriceRange?.min === range.min &&
+                          selectedPriceRange?.max === range.max
                         }
-                      }}
-                      className="w-4 h-4 rounded border-gray-300"
-                    />
-                    <span className="text-sm">{condition}</span>
-                  </label>
-                ))}
-              </div>
+                        onChange={() => setSelectedPriceRange(range)}
+                        className="w-4 h-4 rounded border-gray-300"
+                      />
+                      <span className="text-sm">{range.label}</span>
+                    </label>
+                  ))}
+                  {selectedPriceRange && (
+                    <button
+                      onClick={() => setSelectedPriceRange(null)}
+                      className="text-xs text-green-500 hover:text-green-400 mt-2 font-semibold"
+                    >
+                      Clear Price Filter
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="mb-6">
-              <h4 className="font-semibold mb-3 text-green-400">Brand</h4>
-              <div className="space-y-2 max-h-48 overflow-y-auto">
-                {brands.map((brand) => (
-                  <label key={brand} className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="brand"
-                      checked={selectedBrand === brand}
-                      onChange={() => setSelectedBrand(selectedBrand === brand ? null : brand)}
-                      className="w-4 h-4 rounded border-gray-300"
-                    />
-                    <span className="text-sm">{brand}</span>
-                  </label>
-                ))}
-              </div>
+              <button
+                onClick={() =>
+                  setExpandedFilters({
+                    ...expandedFilters,
+                    condition: !expandedFilters.condition,
+                  })
+                }
+                className="flex items-center justify-between w-full font-semibold mb-3 text-green-400 hover:text-green-300 transition"
+              >
+                <span>Condition</span>
+                <ChevronDown
+                  className={`h-5 w-5 transition-transform ${
+                    expandedFilters.condition ? 'transform rotate-180' : ''
+                  }`}
+                />
+              </button>
+              {expandedFilters.condition && (
+                <div className="space-y-2">
+                  {CONDITIONS.map((condition) => (
+                    <label key={condition} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedConditions.includes(condition)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedConditions([...selectedConditions, condition]);
+                          } else {
+                            setSelectedConditions(
+                              selectedConditions.filter((c) => c !== condition)
+                            );
+                          }
+                        }}
+                        className="w-4 h-4 rounded border-gray-300"
+                      />
+                      <span className="text-sm">{condition}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
             </div>
+
+            {/* Dynamic Specification Filters (shown when brand is selected) */}
+            {selectedBrand && (
+              <>
+                {Object.keys(specificationFilters).length > 0 ? (
+                  <div className="mb-6">
+                    <button
+                      onClick={() =>
+                        setExpandedFilters({
+                          ...expandedFilters,
+                          specs: !expandedFilters.specs,
+                        })
+                      }
+                      className="flex items-center justify-between w-full font-semibold mb-3 text-green-400 hover:text-green-300 transition"
+                    >
+                      <span>Specifications</span>
+                      <ChevronDown
+                        className={`h-5 w-5 transition-transform ${
+                          expandedFilters.specs ? 'transform rotate-180' : ''
+                        }`}
+                      />
+                    </button>
+                    {expandedFilters.specs && (
+                      <div className="space-y-4">
+                        {Object.entries(specificationFilters).map(([specKey, specValues]) => (
+                          <div key={specKey}>
+                            <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 mb-2 capitalize">
+                              {specKey.replace(/_/g, ' ')}
+                            </p>
+                            <div className="space-y-1">
+                              {specValues.map((value) => (
+                                <label key={value} className="flex items-center gap-2 cursor-pointer">
+                                  <input
+                                    type="checkbox"
+                                    checked={(selectedSpecifications[specKey] || []).includes(value)}
+                                    onChange={(e) => {
+                                      const current = selectedSpecifications[specKey] || [];
+                                      if (e.target.checked) {
+                                        setSelectedSpecifications({
+                                          ...selectedSpecifications,
+                                          [specKey]: [...current, value],
+                                        });
+                                      } else {
+                                        setSelectedSpecifications({
+                                          ...selectedSpecifications,
+                                          [specKey]: current.filter(v => v !== value),
+                                        });
+                                      }
+                                    }}
+                                    className="w-4 h-4 rounded border-gray-300"
+                                  />
+                                  <span className="text-sm">{value}</span>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="mb-6 p-3 bg-gray-200 dark:bg-gray-800 rounded-lg text-xs text-gray-600 dark:text-gray-400">
+                    <p>No additional specifications available for {selectedBrand}</p>
+                  </div>
+                )}
+              </>
+            )}
 
             {(selectedConditions.length > 0 ||
               selectedPriceRange ||
-              selectedBrand) && (
+              Object.keys(selectedSpecifications).some(key => selectedSpecifications[key].length > 0)) && (
               <button
                 onClick={() => {
                   setSelectedConditions([]);
                   setSelectedPriceRange(null);
-                  setSelectedBrand(null);
+                  setSelectedSpecifications({});
+                  // Keep the brand selected
                 }}
                 className="w-full py-2 rounded-lg bg-green-500 text-black font-semibold hover:bg-green-600 transition text-sm"
               >
-                Reset All Filters
+                Reset Filters
               </button>
             )}
           </div>
@@ -208,7 +401,23 @@ export default function ProductsPage() {
           <div className="md:col-span-3">
             <div className="mb-6 flex items-center justify-between">
               <h2 className="text-2xl font-bold">
-                Products <span className="text-green-400">({filteredProducts.length})</span>
+                {selectedBrand ? (
+                  <>
+                    {selectedBrand} <span className="text-green-400">({filteredProducts.length})</span>
+                  </>
+                ) : searchQuery ? (
+                  <>
+                    Results for "{searchQuery}" <span className="text-green-400">({filteredProducts.length})</span>
+                  </>
+                ) : selectedConditions.length > 0 ? (
+                  <>
+                    {selectedConditions.join(', ')} <span className="text-green-400">({filteredProducts.length})</span>
+                  </>
+                ) : (
+                  <>
+                    Products <span className="text-green-400">({filteredProducts.length})</span>
+                  </>
+                )}
               </h2>
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -220,59 +429,8 @@ export default function ProductsPage() {
 
             {filteredProducts.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredProducts.map((product) => (
-                  <div
-                    key={product._id}
-                    className="bg-gray-50 dark:bg-zinc-900 rounded-lg overflow-hidden hover:shadow-lg transition border border-green-500/20"
-                  >
-                    <div className="relative h-48 bg-gray-200 dark:bg-zinc-800 overflow-hidden">
-                      <img
-                        src={product.image || 'https://via.placeholder.com/400x300'}
-                        alt={product.name}
-                        className="w-full h-full object-cover hover:scale-110 transition duration-300"
-                      />
-                      {product.oldPrice && product.oldPrice > product.price && (
-                        <div className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 rounded-lg text-xs font-bold">
-                          -{calculateDiscount(product.oldPrice, product.price)}%
-                        </div>
-                      )}
-                      <div className="absolute top-2 left-2 bg-green-500 text-black px-2 py-1 rounded-lg text-xs font-bold">
-                        {product.condition}
-                      </div>
-                    </div>
-
-                    <div className="p-4">
-                      <h3 className="font-semibold text-sm mb-1 line-clamp-2">{product.name}</h3>
-                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
-                        {product.brand}
-                      </p>
-
-                      <div className="mb-3">
-                        <div className="text-lg font-bold text-green-400">
-                          {formatPrice(product.price)}
-                        </div>
-                        {product.oldPrice && product.oldPrice > product.price && (
-                          <div className="text-xs text-gray-500 line-through">
-                            {formatPrice(product.oldPrice)}
-                          </div>
-                        )}
-                      </div>
-
-                      {product.rating && (
-                        <div className="flex items-center gap-1 mb-3">
-                          <span className="text-yellow-400">★</span>
-                          <span className="text-xs font-semibold">{product.rating}/5</span>
-                          <span className="text-xs text-gray-500">
-                            ({product.reviewCount || 0})
-                          </span>
-                        </div>
-                      )}
-
-                      <button className="w-full py-2 rounded-lg bg-green-500 text-black font-semibold hover:bg-green-600 transition text-sm">
-                        Add to Cart
-                      </button>
-                    </div>
-                  </div>
+                {filteredProducts.map((product, index) => (
+                  <ProductCard key={product._id || `product-${index}`} product={product} variant="compact" />
                 ))}
               </div>
             ) : (
@@ -297,5 +455,13 @@ export default function ProductsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ProductsPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center h-screen"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div></div>}>
+      <ProductsPageContent />
+    </Suspense>
   );
 }

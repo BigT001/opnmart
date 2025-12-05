@@ -4,6 +4,7 @@ import "./globals.css";
 import { ReactQueryProvider } from "@/components/providers/ReactQueryProvider";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { ProductProvider } from "@/app/context/ProductContext";
+import { CartProvider } from "@/app/context/CartContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,9 +33,11 @@ export default function RootLayout({
       >
         <ThemeProvider>
           <ProductProvider>
-            <ReactQueryProvider>
-              {children}
-            </ReactQueryProvider>
+            <CartProvider>
+              <ReactQueryProvider>
+                {children}
+              </ReactQueryProvider>
+            </CartProvider>
           </ProductProvider>
         </ThemeProvider>
       </body>

@@ -1,15 +1,17 @@
 'use client';
 
 import Link from 'next/link';
-import { Search, ShoppingCart, Menu, Star, TrendingUp, Zap, Gift, Package, User, LogOut, ChevronDown } from 'lucide-react';
+import { Search, ShoppingCart, Menu, Star, TrendingUp, Zap, Gift, Package, User, LogOut, ChevronDown, Rocket } from 'lucide-react';
 import { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { useProducts } from '@/app/context/ProductContext';
+import { useCart } from '@/app/context/CartContext';
 import SignUpModal from '@/components/AuthModals/SignUpModal';
 import LoginModal from '@/components/AuthModals/LoginModal';
+import ProductCard from '@/components/ProductCard';
 
 // Cloudinary image URLs (free stock images)
 const PRODUCT_IMAGES = {
@@ -94,6 +96,7 @@ const FEATURED_PRODUCTS: any[] = [];
 
 export default function Home() {
   const { allProducts } = useProducts();
+  const { getCartCount } = useCart();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('electronics');
@@ -103,6 +106,7 @@ export default function Home() {
   const [showSignUpModal, setShowSignUpModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [buyer, setBuyer] = useState<any>(null);
+  const [vendor, setVendor] = useState<any>(null);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -116,18 +120,27 @@ export default function Home() {
       const data = await response.json();
       console.log('[HOME PAGE] Session response:', data);
       
-      if (data.buyer) {
-        console.log('[HOME PAGE] User logged in:', data.buyer.email);
+      if (data.vendor) {
+        console.log('[HOME PAGE] User is a vendor:', data.vendor.email);
+        setVendor(data.vendor);
+        setBuyer(null);
+        setShowSignUpModal(false);
+        setShowLoginModal(false);
+      } else if (data.buyer) {
+        console.log('[HOME PAGE] User logged in as buyer:', data.buyer.email);
         setBuyer(data.buyer);
+        setVendor(null);
         setShowSignUpModal(false);
         setShowLoginModal(false);
       } else {
         console.log('[HOME PAGE] No user in session');
         setBuyer(null);
+        setVendor(null);
       }
     } catch (error) {
       console.error('[HOME PAGE] Failed to check session:', error);
       setBuyer(null);
+      setVendor(null);
     } finally {
       setLoading(false);
     }
@@ -156,18 +169,27 @@ export default function Home() {
       const data = await response.json();
       console.log('[HOME PAGE] Refreshed session response:', data);
       
-      if (data.buyer) {
+      if (data.vendor) {
+        console.log('[HOME PAGE] User now registered as vendor:', data.vendor.email);
+        setVendor(data.vendor);
+        setBuyer(null);
+        setShowSignUpModal(false);
+        setShowLoginModal(false);
+      } else if (data.buyer) {
         console.log('[HOME PAGE] User now logged in:', data.buyer.email);
         setBuyer(data.buyer);
+        setVendor(null);
         setShowSignUpModal(false);
         setShowLoginModal(false);
       } else {
         console.log('[HOME PAGE] Still no user after auth');
         setBuyer(null);
+        setVendor(null);
       }
     } catch (error) {
       console.error('[HOME PAGE] Failed to refresh session:', error);
       setBuyer(null);
+      setVendor(null);
     }
   };
 
@@ -184,17 +206,21 @@ export default function Home() {
 
   const handleProfileClick = () => {
     console.log('[HOME PAGE] handleProfileClick called');
-    console.log('[HOME PAGE] buyer._id:', buyer?._id);
     
-    if (buyer && buyer._id) {
-      const dashboardUrl = `/dashboards/buyer/${buyer._id}`;
-      console.log('[HOME PAGE] Navigating to:', dashboardUrl);
+    if (vendor && vendor._id) {
+      // User is a vendor - go to vendor dashboard
+      const dashboardUrl = `/dashboards/vendor/${vendor._id}`;
+      console.log('[HOME PAGE] Vendor navigating to:', dashboardUrl);
       setShowProfileMenu(false);
-      
-      // Use window.location for hard redirect to ensure it works
+      window.location.href = dashboardUrl;
+    } else if (buyer && buyer._id) {
+      // User is a buyer - go to buyer dashboard
+      const dashboardUrl = `/dashboards/buyer/${buyer._id}`;
+      console.log('[HOME PAGE] Buyer navigating to:', dashboardUrl);
+      setShowProfileMenu(false);
       window.location.href = dashboardUrl;
     } else {
-      console.error('[HOME PAGE] No buyer or buyer._id found');
+      console.error('[HOME PAGE] No vendor or buyer found');
     }
   };
 
@@ -212,16 +238,21 @@ export default function Home() {
   const currentCategory = CATEGORIES_DATA.find(c => c.id === activeCategory);
   
   const filteredProducts = useMemo(() => {
-    let products = allProducts.filter(p => {
-      // Find which category this subcategory belongs to
-      const category = CATEGORIES_DATA.find(c => 
-        c.subcategories.some(sub => sub.id === p.subcategory)
-      );
-      return category?.id === activeCategory;
-    });
+    let products = [...allProducts];
+    
+    // Filter by category
+    if (activeCategory) {
+      products = products.filter(p => {
+        // Find which category this subcategory belongs to
+        const category = CATEGORIES_DATA.find(c => 
+          c.subcategories.some(sub => sub.id === p.subcategory)
+        );
+        return category?.id === activeCategory;
+      });
+    }
     
     // Filter by selected subcategory
-    if (activeTab !== 'all') {
+    if (activeTab !== 'all' && activeTab) {
       products = products.filter(p => p.subcategory === activeTab);
     }
     
@@ -230,20 +261,16 @@ export default function Home() {
       products = products.filter(p => p.brand === selectedBrand);
     }
 
+    // Filter by search query
     if (searchQuery) {
-      products = products.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
+      products = products.filter(p => 
+        p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.description?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
     }
 
     return products;
   }, [activeCategory, activeTab, searchQuery, selectedBrand, allProducts, CATEGORIES_DATA]);
-
-  const formatPrice = (price: number) => {
-    return '₦' + price.toLocaleString();
-  };
-
-  const calculateDiscount = (oldPrice: number, newPrice: number) => {
-    return Math.round(((oldPrice - newPrice) / oldPrice) * 100);
-  };
 
   return (
     <div className="min-h-screen bg-white dark:bg-black text-black dark:text-white">
@@ -279,25 +306,27 @@ export default function Home() {
                 className="relative p-2 text-gray-700 dark:text-gray-300 hover:text-green-400 transition"
               >
                 <ShoppingCart className="h-6 w-6" />
-                <span className="absolute -top-1 -right-1 bg-green-500 text-black text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
-                  0
-                </span>
+                {getCartCount() > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-green-500 text-black text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">
+                    {getCartCount()}
+                  </span>
+                )}
               </Link>
 
               {/* Divider */}
               <div className="hidden sm:block h-6 w-px bg-green-500/30"></div>
 
               {/* Profile Menu or Auth Buttons */}
-              {buyer ? (
+              {vendor || buyer ? (
                 // Logged In - Account Button with Avatar
                 <div className="relative">
                   <button
                     onClick={() => setShowProfileMenu(!showProfileMenu)}
                     className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-br from-green-500 to-cyan-500 text-black hover:shadow-lg hover:shadow-green-500/50 transition-all duration-300 font-semibold text-sm"
-                    title={`${buyer.firstName} ${buyer.lastName}`}
+                    title={vendor ? `${vendor.storeName || vendor.tradingName}` : `${buyer.firstName} ${buyer.lastName}`}
                   >
                     <div className="flex items-center justify-center h-6 w-6 rounded-full bg-black/20 font-bold text-xs">
-                      {buyer.firstName.charAt(0).toUpperCase()}
+                      {vendor ? vendor.storeName?.charAt(0).toUpperCase() || vendor.tradingName?.charAt(0).toUpperCase() : buyer.firstName.charAt(0).toUpperCase()}
                     </div>
                     <span className="hidden sm:inline">Account</span>
                     <ChevronDown className={`h-4 w-4 transition-transform ${showProfileMenu ? 'rotate-180' : ''}`} />
@@ -307,8 +336,13 @@ export default function Home() {
                   {showProfileMenu && (
                     <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-zinc-900 rounded-lg shadow-xl border border-green-500/30 z-50 overflow-hidden">
                       <div className="px-4 py-3 border-b border-green-500/20 bg-gray-50 dark:bg-zinc-800">
-                        <p className="text-sm font-semibold text-black dark:text-white">{buyer.firstName} {buyer.lastName}</p>
-                        <p className="text-xs text-gray-600 dark:text-gray-400">{buyer.email}</p>
+                        <p className="text-sm font-semibold text-black dark:text-white">
+                          {vendor ? (vendor.storeName || vendor.tradingName) : `${buyer.firstName} ${buyer.lastName}`}
+                        </p>
+                        <p className="text-xs text-gray-600 dark:text-gray-400">{vendor ? vendor.email : buyer.email}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                          {vendor ? '🏪 Vendor' : '🛍️ Buyer'}
+                        </p>
                       </div>
                       <button
                         onClick={(e) => {
@@ -318,7 +352,7 @@ export default function Home() {
                         className="w-full text-left px-4 py-3 text-sm font-semibold text-black dark:text-white hover:bg-green-50 dark:hover:bg-green-500/10 flex items-center gap-2 transition-colors"
                       >
                         <User className="h-4 w-4 text-green-500" />
-                        My Dashboard
+                        {vendor ? 'Vendor Dashboard' : 'My Dashboard'}
                       </button>
                       <button
                         onClick={handleLogout}
@@ -345,12 +379,6 @@ export default function Home() {
                   >
                     Sign Up
                   </button>
-                  <Link
-                    href="/auth/vendor-signup"
-                    className="px-3 py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-all duration-300 border border-green-500 text-green-500 hover:bg-green-500 hover:text-black active:scale-95"
-                  >
-                    Become a Vendor
-                  </Link>
                 </div>
               )}
 
@@ -397,8 +425,20 @@ export default function Home() {
               </p>
             </div>
             
-            {/* Right Visual */}
-            <div className="hidden sm:block text-5xl opacity-30">📦</div>
+            {/* Right Side - Visual + Start Selling Now Button */}
+            <div className="hidden sm:flex flex-col items-center gap-4">
+              <div className="text-5xl opacity-30">📦</div>
+              <Link
+                href="/auth/vendor-signup"
+                className="flex items-center gap-2 px-6 py-3 rounded-lg bg-white dark:bg-zinc-900 text-black dark:text-white font-semibold border-2 border-gradient-to-r from-green-500 to-cyan-500 hover:bg-gray-50 dark:hover:bg-zinc-800 transition-all duration-300 transform hover:scale-105 active:scale-95 whitespace-nowrap text-sm sm:text-base shadow-md hover:shadow-lg hover:shadow-green-500/30"
+                style={{
+                  borderImage: 'linear-gradient(to right, rgb(34, 197, 94), rgb(34, 211, 238)) 1'
+                }}
+              >
+                <Rocket className="h-5 w-5 text-green-500" />
+                Start Selling Now
+              </Link>
+            </div>
           </div>
         </div>
       </section>
@@ -512,156 +552,74 @@ export default function Home() {
 
           {/* Right Content - Products Grid */}
           <div className="lg:col-span-3">
-            {/* Section Header */}
-            <div className="mb-8">
-              <h2 className="text-3xl sm:text-4xl font-bold text-black dark:text-white mb-6">
-                {activeTab === 'all' ? currentCategory?.name : currentCategory?.subcategories.find(s => s.id === activeTab)?.name}
-              </h2>
-            </div>
+            {/* Brand Filter - Square Boxes Grid (Only show for specific subcategories, not "All Products") */}
+            {activeTab !== 'all' && (
+              <div className="mb-8">
+                <div className="flex gap-3 flex-wrap">
+                  {/* Get all unique brands from current subcategory */}
+                  {Array.from(new Set(filteredProducts.map(p => p.brand))).map((brand: any) => {
+                      const brandEmojiMap: Record<string, string> = {
+                        'Samsung': '📱',
+                        'Apple': '🍎',
+                        'Google': '🔵',
+                        'Dell': '💻',
+                        'ASUS': '⚙️',
+                        'Canon': '📷',
+                        'Sony': '🎬',
+                        'LG': '❄️',
+                        'Elepaq': '⚡',
+                        'Honda': '🏍️',
+                        'Bose': '🎵',
+                        'JBL': '🔊',
+                        'Marshall': '🎸',
+                        'Anker': '🔋',
+                        'Audio-Technica': '🎤',
+                        'Shure': '🎙️',
+                        'Tecno': '📲',
+                        'Infinix': '⚡',
+                        'Itel': '🔌',
+                        'Nokia': '📞',
+                        'Huawei': '🌐',
+                        'OPPO': '🎨',
+                        'Xiaomi': '🔴',
+                        'Vivo': '🎭',
+                        'Freeyond': '✨',
+                        'Gionee': '💎',
+                        'HMD': '🏠',
+                        'Umidigi': '🌟',
+                      };
+                      const brandEmoji = brandEmojiMap[brand as string] || '✨';
 
-            {/* Brand Filter - Square Boxes Grid */}
-            <div className="mb-8">
-              <div className="flex gap-3 flex-wrap">
-                {/* Get all unique brands from current subcategory */}
-                {Array.from(new Set(filteredProducts.map(p => p.brand))).map((brand: any) => {
-                    const brandEmojiMap: Record<string, string> = {
-                      'Samsung': '📱',
-                      'Apple': '🍎',
-                      'Google': '🔵',
-                      'Dell': '💻',
-                      'ASUS': '⚙️',
-                      'Canon': '📷',
-                      'Sony': '🎬',
-                      'LG': '❄️',
-                      'Elepaq': '⚡',
-                      'Honda': '🏍️',
-                      'Bose': '🎵',
-                      'JBL': '🔊',
-                      'Marshall': '🎸',
-                      'Anker': '🔋',
-                      'Audio-Technica': '🎤',
-                      'Shure': '🎙️',
-                      'Tecno': '📲',
-                      'Infinix': '⚡',
-                      'Itel': '🔌',
-                      'Nokia': '📞',
-                      'Huawei': '🌐',
-                      'OPPO': '🎨',
-                      'Xiaomi': '🔴',
-                      'Vivo': '🎭',
-                      'Freeyond': '✨',
-                      'Gionee': '💎',
-                      'HMD': '🏠',
-                      'Umidigi': '🌟',
-                    };
-                    const brandEmoji = brandEmojiMap[brand as string] || '✨';
-
-                    return (
-                      <button
-                        key={brand}
-                        onClick={() => setSelectedBrand(selectedBrand === brand ? null : brand)}
-                        className={`w-16 h-16 sm:w-20 sm:h-20 rounded-xl flex flex-col items-center justify-center gap-1 transition-all duration-300 font-semibold text-xs sm:text-sm ${
-                          selectedBrand === brand
-                            ? 'bg-gradient-to-br from-green-500 to-cyan-500 text-black shadow-lg shadow-green-500/50 scale-105'
-                            : 'bg-gray-100 dark:bg-zinc-800 text-black dark:text-gray-300 hover:bg-green-500/20 dark:hover:bg-green-500/20 border border-gray-200 dark:border-zinc-700'
-                        }`}
-                      >
-                        <span className="text-xl sm:text-2xl">{brandEmoji}</span>
-                        <span className="line-clamp-1">{brand}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-            {/* Products Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-              {filteredProducts.map((product) => {
-                const discount = product.oldPrice ? calculateDiscount(product.oldPrice, product.price) : 0;
-                return (
-                  <Link
-                    key={product.id}
-                    href={`/products/${product.id}`}
-                    className="group"
-                  >
-                    <div className="bg-white dark:bg-zinc-900 rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition duration-300 border border-gray-200 dark:border-zinc-800 h-full flex flex-col">
-                      {/* Image Section */}
-                      <div className="relative bg-gradient-to-br from-gray-100 to-gray-50 dark:from-zinc-800 dark:to-zinc-900 h-44 sm:h-52 flex items-center justify-center overflow-hidden">
-                        <img
-                          src={product.image}
-                          alt={product.name}
-                          className="w-full h-full object-cover group-hover:scale-110 transition duration-500"
-                        />
-
-                        {/* Overlay */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition" />
-                        
-                        {/* Badges */}
-                        <div className="absolute top-3 right-3 flex flex-col gap-2">
-                          {product.badge && (
-                            <div className="bg-gradient-to-r from-green-500 to-cyan-500 text-black text-xs font-bold px-3 py-1.5 rounded-lg shadow-md shadow-green-500/50 transform group-hover:scale-110 transition">
-                              {product.badge}
-                            </div>
-                          )}
-                          {discount > 0 && (
-                            <div className="bg-red-500 text-white text-xs font-black px-2.5 py-1.5 rounded-lg shadow-md shadow-red-500/50 flex items-center justify-center min-w-11 transform group-hover:scale-110 transition">
-                              -{discount}%
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Quick View Button */}
-                        <button className="absolute bottom-3 left-3 right-3 py-2 bg-gradient-to-r from-green-500 to-cyan-500 text-black rounded-lg font-semibold text-xs opacity-0 group-hover:opacity-100 transition transform group-hover:translate-y-0 translate-y-2 shadow-md shadow-green-500/50">
-                          Quick View
+                      return (
+                        <button
+                          key={brand}
+                          onClick={() => {
+                            setSelectedBrand(selectedBrand === brand ? null : brand);
+                            // Navigate to products page with brand filter
+                            if (selectedBrand !== brand) {
+                              router.push(`/products?brand=${encodeURIComponent(brand)}`);
+                            }
+                          }}
+                          className={`w-16 h-16 sm:w-20 sm:h-20 rounded-xl flex flex-col items-center justify-center gap-1 transition-all duration-300 font-semibold text-xs sm:text-sm ${
+                            selectedBrand === brand
+                              ? 'bg-gradient-to-br from-green-500 to-cyan-500 text-black shadow-lg shadow-green-500/50 scale-105'
+                              : 'bg-gray-100 dark:bg-zinc-800 text-black dark:text-gray-300 hover:bg-green-500/20 dark:hover:bg-green-500/20 border border-gray-200 dark:border-zinc-700'
+                          }`}
+                        >
+                          <span className="text-xl sm:text-2xl">{brandEmoji}</span>
+                          <span className="line-clamp-1">{brand}</span>
                         </button>
-                      </div>
-
-                  {/* Product Info */}
-                  <div className="p-4 flex-1 flex flex-col">
-                    {/* Product Name */}
-                    <h3 className="font-bold text-black dark:text-white mb-3 line-clamp-2 group-hover:text-green-500 transition text-sm leading-snug">
-                      {product.name}
-                    </h3>
-
-                    {/* Rating */}
-                    <div className="flex items-center gap-2 mb-4">
-                      <div className="flex text-green-400 gap-0.5">
-                        {[...Array(5)].map((_, i) => (
-                          <Star
-                            key={i}
-                            className={`h-3 w-3 ${i < Math.floor(product.rating || 4) ? 'fill-green-400' : 'text-gray-400 dark:text-gray-700'}`}
-                          />
-                        ))}
-                      </div>
-                      <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">
-                        ({product.reviews || 0})
-                      </span>
-                    </div>
-
-                    {/* Price Section */}
-                    <div className="mb-4 pb-4 border-b border-gray-200 dark:border-zinc-800">
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-2xl font-black text-transparent bg-gradient-to-r from-green-500 to-cyan-500 bg-clip-text">
-                          {formatPrice(product.price)}
-                        </span>
-                        {product.oldPrice && (
-                          <span className="text-xs text-gray-500 dark:text-gray-600 line-through font-medium">
-                            {formatPrice(product.oldPrice)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Add to Cart Button */}
-                    <button className="w-full py-3 bg-gradient-to-r from-green-500 to-cyan-500 hover:from-green-400 hover:to-cyan-400 text-black rounded-xl font-bold text-sm transition transform hover:scale-105 shadow-lg shadow-green-500/40 hover:shadow-green-500/60 mt-auto flex items-center justify-center gap-2 group/btn">
-                      <ShoppingCart className="h-4 w-4 transition group-hover/btn:scale-110" />
-                      <span>Add to Cart</span>
-                    </button>
+                      );
+                    })}
                   </div>
                 </div>
-              </Link>
-            );
-          })}
+            )}
+
+            {/* Products Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+              {filteredProducts.map((product) => (
+                <ProductCard key={product._id || product.id} product={product} variant="compact" />
+              ))}
             </div>
 
             {filteredProducts.length === 0 && (

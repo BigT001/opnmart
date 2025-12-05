@@ -47,27 +47,26 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Return buyer if found
+    // Return both buyer and vendor if user has both profiles
+    let buyerResponse = null;
+    let vendorResponse = null;
+
     if (buyer) {
       console.log('[SESSION API] Buyer found:', buyer.email);
-      const buyerResponse = buyer.toObject();
+      buyerResponse = buyer.toObject();
       delete (buyerResponse as any).password;
-      return NextResponse.json(
-        { buyer: buyerResponse, vendor: null },
-        { status: 200 }
-      );
     }
 
-    // Return vendor if found
     if (vendor) {
       console.log('[SESSION API] Vendor found:', vendor.email);
-      const vendorResponse = vendor.toObject();
+      vendorResponse = vendor.toObject();
       delete (vendorResponse as any).password;
-      return NextResponse.json(
-        { buyer: null, vendor: vendorResponse },
-        { status: 200 }
-      );
     }
+
+    return NextResponse.json(
+      { buyer: buyerResponse, vendor: vendorResponse },
+      { status: 200 }
+    );
 
     return NextResponse.json(
       { buyer: null, vendor: null },

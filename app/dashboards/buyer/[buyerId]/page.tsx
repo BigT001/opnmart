@@ -1,10 +1,28 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ShoppingBag, Heart, Package, MapPin, LogOut, Menu, X, Star, Download, MessageSquare, ArrowRight, Clock, ChevronDown, User, Settings } from 'lucide-react';
+import { ShoppingBag, Heart, Package, MapPin, LogOut, Menu, X, Star, Download, MessageSquare, ArrowRight, Clock, ChevronDown, User, Settings, Wallet } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+
+const waveStyle = `
+  @keyframes wave {
+    0% { transform: rotate(0deg); }
+    10% { transform: rotate(14deg); }
+    20% { transform: rotate(-8deg); }
+    30% { transform: rotate(14deg); }
+    40% { transform: rotate(-4deg); }
+    50% { transform: rotate(10deg); }
+    60% { transform: rotate(0deg); }
+    100% { transform: rotate(0deg); }
+  }
+  .wave-hand {
+    display: inline-block;
+    animation: wave 2s ease-in-out infinite;
+    transform-origin: 70% 70%;
+  }
+`;
 
 export default function BuyerDashboard() {
   const router = useRouter();
@@ -16,6 +34,7 @@ export default function BuyerDashboard() {
   const [buyer, setBuyer] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showWelcomeHeader, setShowWelcomeHeader] = useState(true);
 
   // Fetch buyer session and verify buyerId matches
   useEffect(() => {
@@ -65,6 +84,24 @@ export default function BuyerDashboard() {
     
     fetchSession();
   }, [router, buyerId]);
+
+  // Auto-hide welcome header after 30 seconds when viewing overview tab
+  useEffect(() => {
+    if (activeTab === 'overview' && showWelcomeHeader) {
+      const timer = setTimeout(() => {
+        setShowWelcomeHeader(false);
+      }, 30000); // 30 seconds
+
+      return () => clearTimeout(timer);
+    }
+  }, [activeTab, showWelcomeHeader]);
+
+  // Show welcome header again when user leaves and returns to overview
+  useEffect(() => {
+    if (activeTab === 'overview') {
+      setShowWelcomeHeader(true);
+    }
+  }, [activeTab]);
 
   // State for dynamic data
   const [orders, setOrders] = useState<any[]>([]);
@@ -171,18 +208,18 @@ export default function BuyerDashboard() {
             <span className="text-2xl">🛒</span>
             {sidebarOpen && <span className="font-bold text-lg bg-gradient-to-r from-green-400 to-cyan-400 bg-clip-text text-transparent">OpnMart</span>}
           </Link>
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded transition">
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded transition flex-shrink-0">
             {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </div>
 
-        <nav className="flex-1 px-4 py-6 space-y-2 overflow-auto">
+        <nav className="flex-1 px-4 py-3 space-y-1 overflow-auto">
           {[
             { id: 'overview', label: 'Overview', icon: ShoppingBag },
             { id: 'orders', label: 'My Orders', icon: Package },
             { id: 'wishlist', label: 'Wishlist', icon: Heart },
-            { id: 'invoices', label: 'Invoices', icon: Download },
-            { id: 'tracking', label: 'Track Order', icon: Clock },
+            { id: 'wallet', label: 'Wallet', icon: Wallet },
+            { id: 'messages', label: 'Messages', icon: MessageSquare },
             { id: 'settings', label: 'Settings', icon: Settings },
           ].map(item => {
             const Icon = item.icon;
@@ -190,7 +227,7 @@ export default function BuyerDashboard() {
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition ${
+                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg transition ${
                   activeTab === item.id
                     ? 'bg-gradient-to-r from-green-500 to-cyan-500 text-black font-semibold'
                     : 'hover:bg-gray-100 dark:hover:bg-zinc-800'
@@ -206,7 +243,7 @@ export default function BuyerDashboard() {
         <div className="border-t border-gray-200 dark:border-zinc-800 p-4 space-y-2">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition"
+            className="w-full flex items-center gap-2 px-3 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition"
           >
             <LogOut className="h-5 w-5 flex-shrink-0" />
             {sidebarOpen && <span className="font-semibold">Logout</span>}
@@ -216,14 +253,17 @@ export default function BuyerDashboard() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
+        <style>{waveStyle}</style>
         <div className="p-8">
           {/* Top Section with Welcome Message and Theme Toggle */}
           <div className="flex items-start justify-between mb-8">
-            <div>
-              <h2 className="text-4xl font-bold mb-2">Welcome back, {buyer?.firstName}! 👋</h2>
-              <p className="text-gray-600 dark:text-gray-400">Manage your orders, wishlist, and shipping addresses</p>
-              <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">Buyer ID: {buyerId}</p>
-            </div>
+            {activeTab === 'overview' && showWelcomeHeader && (
+              <div>
+                <h2 className="text-4xl font-bold mb-2">Welcome back, {buyer?.firstName}! <span className="wave-hand">👋</span></h2>
+                <p className="text-gray-600 dark:text-gray-400">Manage your orders, wishlist, and shipping addresses</p>
+                <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">Buyer ID: {buyerId}</p>
+              </div>
+            )}
             <ThemeToggle />
           </div>
 

@@ -32,19 +32,22 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate required fields
-    if (!name || !description || !category || !subcategory || !brand || !price || !stock || !vendorId || !image) {
+    const isGrocery = category === 'grocery';
+    const brandRequired = !isGrocery;
+    
+    if (!name || !description || !category || !subcategory || (brandRequired && !brand) || !price || !stock || !vendorId || !image) {
       const missing = [];
       if (!name) missing.push('name');
       if (!description) missing.push('description');
       if (!category) missing.push('category');
       if (!subcategory) missing.push('subcategory');
-      if (!brand) missing.push('brand');
+      if (brandRequired && !brand) missing.push('brand');
       if (!price) missing.push('price');
       if (!stock) missing.push('stock');
       if (!vendorId) missing.push('vendorId');
       if (!image) missing.push('image');
       
-      console.error('Missing fields:', missing);
+      console.error('Missing fields:', missing, { name, description, category, subcategory, brand, price, stock, vendorId, image: image?.name });
       return NextResponse.json(
         { error: `Missing required fields: ${missing.join(', ')}` },
         { status: 400 }
@@ -151,7 +154,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Connect to MongoDB
+    console.log('Connecting to MongoDB...');
     await connectDB();
+    console.log('MongoDB connected successfully');
 
     // Handle additional product images
     const additionalImages: Array<{ url: string; publicId?: string }> = [];
@@ -217,6 +222,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Create product in MongoDB
+    console.log('Creating product with data:', {
+      name,
+      description: description?.substring(0, 50) + '...',
+      category,
+      subcategory,
+      brand,
+      price,
+      stock,
+      vendorId,
+      imageUrl: cloudinaryUrl?.substring(0, 50) + '...',
+      additionalImagesCount: additionalImages.length,
+    });
+    
     const product = await Product.create({
       name,
       description,
@@ -237,6 +255,8 @@ export async function POST(request: NextRequest) {
       reviews: 0,
       sold: 0,
     });
+
+    console.log('Product created successfully:', product._id.toString());
 
     return NextResponse.json(
       {
@@ -259,7 +279,11 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error('Product upload error:', error);
+    console.error('Product upload error:', {
+      error,
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     return NextResponse.json(
       { 
         error: 'Failed to upload product. Please try again.',
@@ -273,7 +297,10 @@ export async function POST(request: NextRequest) {
 // GET - Fetch all products or products by vendor
 export async function GET(request: NextRequest) {
   try {
+    console.log('GET /api/products - Starting');
+    console.log('Connecting to MongoDB for GET...');
     await connectDB();
+    console.log('MongoDB connected successfully for GET');
 
     const searchParams = request.nextUrl.searchParams;
     const vendorId = searchParams.get('vendorId');

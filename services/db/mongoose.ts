@@ -28,8 +28,8 @@ if (!cached) {
  * Connect to MongoDB using Mongoose
  */
 export async function connectDB(): Promise<Connection> {
-  // If connection is already cached, return it
-  if (cached.conn) {
+  // If connection is already cached and ready, return it
+  if (cached.conn && mongoose.connection.readyState === 1) {
     console.log('Using cached MongoDB connection');
     return cached.conn;
   }
@@ -47,7 +47,7 @@ export async function connectDB(): Promise<Connection> {
       console.log(`URI: ${MONGODB_URI.split('@')[0]}...`);
 
       const opts = {
-        bufferCommands: false,
+        bufferCommands: true, // Changed to true to allow buffering during connection
         maxPoolSize: 10,
         serverSelectionTimeoutMS: 5000,
       };

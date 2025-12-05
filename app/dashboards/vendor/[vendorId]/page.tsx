@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import {
   BarChart3,
   Package,
@@ -14,12 +13,41 @@ import {
   X,
   Settings,
   Store,
-  TrendingUp,
-  Users,
-  Bell,
-  Plus,
-  Edit2,
+  Wallet,
+  MessageSquare,
+  Star,
+  BarChart2,
+  HelpCircle,
 } from 'lucide-react';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import Overview from './components/Overview/Overview';
+import Products from './components/Products/Products';
+import Orders from './components/Orders/Orders';
+import Revenue from './components/Revenue/Revenue';
+import WalletComponent from './components/Wallet/Wallet';
+import Messages from './components/Messages/Messages';
+import Reviews from './components/Reviews/Reviews';
+import Reports from './components/Reports/Reports';
+import Support from './components/Support/Support';
+import SettingsComponent from './components/Settings/Settings';
+
+const waveStyle = `
+  @keyframes wave {
+    0% { transform: rotate(0deg); }
+    10% { transform: rotate(14deg); }
+    20% { transform: rotate(-8deg); }
+    30% { transform: rotate(14deg); }
+    40% { transform: rotate(-4deg); }
+    50% { transform: rotate(10deg); }
+    60% { transform: rotate(0deg); }
+    100% { transform: rotate(0deg); }
+  }
+  .wave-hand {
+    display: inline-block;
+    animation: wave 2s ease-in-out infinite;
+    transform-origin: 70% 70%;
+  }
+`;
 
 export default function VendorDashboard() {
   const router = useRouter();
@@ -31,6 +59,7 @@ export default function VendorDashboard() {
   const [vendor, setVendor] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showWelcomeHeader, setShowWelcomeHeader] = useState(true);
 
   // Fetch vendor session and verify vendorId matches
   useEffect(() => {
@@ -44,9 +73,16 @@ export default function VendorDashboard() {
         console.log('[VENDOR_DASHBOARD] Session data:', data);
 
         if (!data.vendor) {
-          // Not logged in, redirect to home
           console.log('[VENDOR_DASHBOARD] No vendor in session, redirecting to home');
-          router.push('/');
+          setError('Unauthorized: You must be a registered vendor to access this page');
+          setTimeout(() => router.push('/'), 2000);
+          return;
+        }
+
+        if (data.buyer && !data.vendor) {
+          console.log('[VENDOR_DASHBOARD] Buyer trying to access vendor dashboard');
+          setError('Unauthorized: Buyers cannot access vendor dashboard');
+          setTimeout(() => router.push('/'), 2000);
           return;
         }
 
@@ -71,7 +107,8 @@ export default function VendorDashboard() {
         setVendor(data.vendor);
       } catch (error) {
         console.error('[VENDOR_DASHBOARD] Error fetching session:', error);
-        router.push('/');
+        setError('Error loading vendor session');
+        setTimeout(() => router.push('/'), 2000);
       } finally {
         setLoading(false);
       }
@@ -80,13 +117,23 @@ export default function VendorDashboard() {
     fetchSession();
   }, [router, vendorId]);
 
-  // Dummy data for demonstration
-  const vendorStats = {
-    totalProducts: vendor?.totalProducts || 0,
-    totalOrders: vendor?.totalOrders || 0,
-    totalRevenue: vendor?.totalRevenue || 0,
-    storeRating: vendor?.storeRating || 0,
-  };
+  // Auto-hide welcome header after 30 seconds when viewing overview tab
+  useEffect(() => {
+    if (activeTab === 'overview' && showWelcomeHeader) {
+      const timer = setTimeout(() => {
+        setShowWelcomeHeader(false);
+      }, 30000); // 30 seconds
+
+      return () => clearTimeout(timer);
+    }
+  }, [activeTab, showWelcomeHeader]);
+
+  // Show welcome header again when user leaves and returns to overview
+  useEffect(() => {
+    if (activeTab === 'overview') {
+      setShowWelcomeHeader(true);
+    }
+  }, [activeTab]);
 
   const handleLogout = async () => {
     try {
@@ -121,6 +168,36 @@ export default function VendorDashboard() {
       label: 'Revenue',
       icon: DollarSign,
       description: 'Financial reports',
+    },
+    {
+      id: 'wallet',
+      label: 'Wallet',
+      icon: Wallet,
+      description: 'Payment & Payouts',
+    },
+    {
+      id: 'messages',
+      label: 'Messages',
+      icon: MessageSquare,
+      description: 'Customer messages',
+    },
+    {
+      id: 'reviews',
+      label: 'Reviews',
+      icon: Star,
+      description: 'Customer reviews',
+    },
+    {
+      id: 'reports',
+      label: 'Reports',
+      icon: BarChart2,
+      description: 'Business reports',
+    },
+    {
+      id: 'support',
+      label: 'Support',
+      icon: HelpCircle,
+      description: 'Help & Support',
     },
     {
       id: 'settings',
@@ -171,22 +248,20 @@ export default function VendorDashboard() {
           </Link>
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className={`p-1 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded transition ${
-              sidebarOpen ? '' : 'hidden'
-            }`}
+            className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded transition flex-shrink-0"
           >
             {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </div>
 
-        <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+        <nav className="flex-1 px-4 py-3 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
             const Icon = item.icon;
             return (
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition ${
+                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg transition ${
                   activeTab === item.id
                     ? 'bg-green-500 text-white'
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-zinc-800'
@@ -201,9 +276,13 @@ export default function VendorDashboard() {
         </nav>
 
         <div className="border-t border-gray-200 dark:border-zinc-800 p-4 space-y-2">
+          <div className={`flex items-center ${sidebarOpen ? 'gap-2' : 'justify-center'}`}>
+            <ThemeToggle />
+            {sidebarOpen && <span className="text-sm text-gray-600 dark:text-gray-400">Theme</span>}
+          </div>
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition"
+            className="w-full flex items-center gap-2 px-3 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition"
           >
             <LogOut className="h-5 w-5 flex-shrink-0" />
             {sidebarOpen && <span className="font-semibold">Logout</span>}
@@ -213,271 +292,32 @@ export default function VendorDashboard() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
+        <style>{waveStyle}</style>
         <div className="p-8">
-          {/* Top Section with Welcome Message and Theme Toggle */}
+          {/* Top Section with Welcome Message */}
           <div className="flex items-start justify-between mb-8">
-            <div>
-              <h2 className="text-4xl font-bold mb-2">Welcome back, {vendor?.storeName}! 🏪</h2>
-              <p className="text-gray-600 dark:text-gray-400">
-                Manage your store, products, and orders efficiently
-              </p>
-              <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">Vendor ID: {vendorId}</p>
-            </div>
-            <ThemeToggle />
+            {activeTab === 'overview' && showWelcomeHeader && (
+              <div>
+                <h2 className="text-4xl font-bold mb-2">Welcome back, {vendor?.storeName}! <span className="wave-hand">🏪</span></h2>
+                <p className="text-gray-600 dark:text-gray-400">
+                  Manage your store, products, and orders efficiently
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-500 mt-2">Vendor ID: {vendorId}</p>
+              </div>
+            )}
           </div>
 
-          {/* Content based on active tab */}
-          {activeTab === 'overview' && (
-            <div className="space-y-6">
-              {/* Stats Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {[
-                  {
-                    label: 'Total Products',
-                    value: vendorStats.totalProducts,
-                    icon: Package,
-                    color: 'from-blue-400 to-blue-600',
-                  },
-                  {
-                    label: 'Total Orders',
-                    value: vendorStats.totalOrders,
-                    icon: ShoppingCart,
-                    color: 'from-green-400 to-green-600',
-                  },
-                  {
-                    label: 'Total Revenue',
-                    value: `₦${(vendorStats.totalRevenue / 1000).toFixed(1)}K`,
-                    icon: DollarSign,
-                    color: 'from-purple-400 to-purple-600',
-                  },
-                  {
-                    label: 'Store Rating',
-                    value: `${vendorStats.storeRating}/5.0`,
-                    icon: TrendingUp,
-                    color: 'from-orange-400 to-orange-600',
-                  },
-                ].map((stat, i) => {
-                  const Icon = stat.icon;
-                  return (
-                    <div
-                      key={i}
-                      className="bg-white dark:bg-zinc-900 rounded-lg p-6 border border-gray-200 dark:border-zinc-800"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-gray-600 dark:text-gray-400 text-sm">{stat.label}</p>
-                          <p className="text-3xl font-bold mt-2">{stat.value}</p>
-                        </div>
-                        <div className={`bg-gradient-to-br ${stat.color} p-3 rounded-lg`}>
-                          <Icon className="h-6 w-6 text-white" />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Store Information */}
-              <div className="bg-white dark:bg-zinc-900 rounded-lg p-6 border border-gray-200 dark:border-zinc-800">
-                <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                  <Store className="h-5 w-5 text-green-500" />
-                  Store Information
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <p className="text-gray-600 dark:text-gray-400 text-sm mb-1">Store Name</p>
-                    <p className="text-lg font-semibold">{vendor?.storeName}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-600 dark:text-gray-400 text-sm mb-1">Business Category</p>
-                    <p className="text-lg font-semibold">{vendor?.businessCategory}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-600 dark:text-gray-400 text-sm mb-1">Email</p>
-                    <p className="text-lg font-semibold">{vendor?.email}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-600 dark:text-gray-400 text-sm mb-1">Phone</p>
-                    <p className="text-lg font-semibold">{vendor?.phone}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Products Tab */}
-          {activeTab === 'products' && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h3 className="text-2xl font-bold">Your Products</h3>
-                <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-500 text-white hover:bg-green-600 transition">
-                  <Plus className="h-5 w-5" />
-                  Add Product
-                </button>
-              </div>
-
-              <div className="bg-white dark:bg-zinc-900 rounded-lg p-12 border border-gray-200 dark:border-zinc-800 text-center">
-                <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600 dark:text-gray-400 text-lg">No products yet</p>
-                <p className="text-gray-500 dark:text-gray-500 text-sm">
-                  Start by adding your first product to your store
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Orders Tab */}
-          {activeTab === 'orders' && (
-            <div className="space-y-6">
-              <h3 className="text-2xl font-bold">Orders</h3>
-              <div className="bg-white dark:bg-zinc-900 rounded-lg p-12 border border-gray-200 dark:border-zinc-800 text-center">
-                <ShoppingCart className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600 dark:text-gray-400 text-lg">No orders yet</p>
-                <p className="text-gray-500 dark:text-gray-500 text-sm">
-                  Your orders will appear here once customers start buying
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Revenue Tab */}
-          {activeTab === 'revenue' && (
-            <div className="space-y-6">
-              <h3 className="text-2xl font-bold">Revenue & Payments</h3>
-              <div className="bg-white dark:bg-zinc-900 rounded-lg p-12 border border-gray-200 dark:border-zinc-800 text-center">
-                <DollarSign className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600 dark:text-gray-400 text-lg">No revenue data</p>
-                <p className="text-gray-500 dark:text-gray-500 text-sm">
-                  Your revenue and payment history will appear here
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Settings Tab */}
-          {activeTab === 'settings' && (
-            <div className="space-y-6">
-              <h3 className="text-2xl font-bold">Store Settings</h3>
-
-              <div className="bg-white dark:bg-zinc-900 rounded-lg p-6 border border-gray-200 dark:border-zinc-800">
-                <h4 className="text-lg font-bold mb-4 flex items-center gap-2">
-                  <Edit2 className="h-5 w-5 text-green-500" />
-                  Store Information
-                </h4>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                  <div>
-                    <label className="block text-sm font-semibold mb-2">Store Name</label>
-                    <input
-                      type="text"
-                      value={vendor?.storeName}
-                      disabled
-                      className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 bg-gray-100 dark:bg-zinc-800 cursor-not-allowed"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold mb-2">Email</label>
-                    <input
-                      type="email"
-                      value={vendor?.email}
-                      disabled
-                      className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 bg-gray-100 dark:bg-zinc-800 cursor-not-allowed"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold mb-2">Phone</label>
-                    <input
-                      type="tel"
-                      value={vendor?.phone}
-                      disabled
-                      className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 bg-gray-100 dark:bg-zinc-800 cursor-not-allowed"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold mb-2">Business Category</label>
-                    <input
-                      type="text"
-                      value={vendor?.businessCategory}
-                      disabled
-                      className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 bg-gray-100 dark:bg-zinc-800 cursor-not-allowed"
-                    />
-                  </div>
-                </div>
-
-                <button className="px-6 py-2 rounded-lg bg-green-500 text-white hover:bg-green-600 transition">
-                  Edit Store Information
-                </button>
-              </div>
-
-              {/* Bank Account Section */}
-              <div className="bg-white dark:bg-zinc-900 rounded-lg p-6 border border-gray-200 dark:border-zinc-800">
-                <h4 className="text-lg font-bold mb-4 flex items-center gap-2">
-                  <DollarSign className="h-5 w-5 text-green-500" />
-                  Bank Account
-                </h4>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                  <div>
-                    <label className="block text-sm font-semibold mb-2">Account Name</label>
-                    <input
-                      type="text"
-                      value={vendor?.bankAccount?.accountName}
-                      disabled
-                      className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 bg-gray-100 dark:bg-zinc-800 cursor-not-allowed"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold mb-2">Account Number</label>
-                    <input
-                      type="text"
-                      value={vendor?.bankAccount?.accountNumber}
-                      disabled
-                      className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 bg-gray-100 dark:bg-zinc-800 cursor-not-allowed"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold mb-2">Bank Name</label>
-                    <input
-                      type="text"
-                      value={vendor?.bankAccount?.bankName}
-                      disabled
-                      className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 bg-gray-100 dark:bg-zinc-800 cursor-not-allowed"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold mb-2">Bank Code</label>
-                    <input
-                      type="text"
-                      value={vendor?.bankAccount?.bankCode}
-                      disabled
-                      className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 bg-gray-100 dark:bg-zinc-800 cursor-not-allowed"
-                    />
-                  </div>
-                </div>
-
-                <button className="px-6 py-2 rounded-lg bg-green-500 text-white hover:bg-green-600 transition">
-                  Update Bank Account
-                </button>
-              </div>
-
-              {/* Danger Zone */}
-              <div className="bg-red-50 dark:bg-red-900/10 rounded-lg p-6 border border-red-200 dark:border-red-900">
-                <h4 className="text-lg font-bold text-red-600 dark:text-red-400 mb-4">Danger Zone</h4>
-                <p className="text-red-700 dark:text-red-300 mb-4">
-                  Closing your store will make it unavailable to customers.
-                </p>
-                <button className="px-6 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white transition">
-                  Close Store
-                </button>
-              </div>
-            </div>
-          )}
+          {/* Render Components Based on Active Tab */}
+          {activeTab === 'overview' && <Overview vendor={vendor} vendorId={vendorId} />}
+          {activeTab === 'products' && <Products />}
+          {activeTab === 'orders' && <Orders />}
+          {activeTab === 'revenue' && <Revenue />}
+          {activeTab === 'wallet' && <WalletComponent />}
+          {activeTab === 'messages' && <Messages />}
+          {activeTab === 'reviews' && <Reviews />}
+          {activeTab === 'reports' && <Reports />}
+          {activeTab === 'support' && <Support />}
+          {activeTab === 'settings' && <SettingsComponent vendor={vendor} />}
         </div>
       </main>
     </div>

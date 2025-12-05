@@ -103,7 +103,18 @@ export default function ProductUploadModal({ isOpen, onClose, onSubmit }: Produc
     
     if (!formData.name.trim()) newErrors.name = 'Product name is required';
     if (!formData.description.trim()) newErrors.description = 'Description is required';
-    if (!formData.brand) newErrors.brand = 'Brand is required';
+    
+    // Brand is optional for grocery category
+    const categoriesWithoutBrand = ['grocery'];
+    const requiresBrand = !categoriesWithoutBrand.includes(formData.category);
+    
+    if (requiresBrand && !formData.brand) {
+      newErrors.brand = 'Brand is required';
+    } else if (categoriesWithoutBrand.includes(formData.category) && !formData.brand) {
+      // For grocery, if brand is empty, set it to "None"
+      setFormData(prev => ({ ...prev, brand: 'None' }));
+    }
+    
     if (!formData.price) newErrors.price = 'Price is required';
     if (isNaN(Number(formData.price))) newErrors.price = 'Price must be a number';
     if (!formData.stock) newErrors.stock = 'Stock is required';
@@ -565,7 +576,7 @@ export default function ProductUploadModal({ isOpen, onClose, onSubmit }: Produc
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-bold text-gray-900 dark:text-white mb-2">
-                      Brand <span className="text-red-500">*</span>
+                      Brand {formData.category === 'grocery' ? <span className="text-gray-500 font-normal">(Optional)</span> : <span className="text-red-500">*</span>}
                     </label>
                     <select
                       name="brand"
@@ -575,7 +586,10 @@ export default function ProductUploadModal({ isOpen, onClose, onSubmit }: Produc
                         errors.brand ? 'border-red-500' : 'border-gray-300 dark:border-zinc-700'
                       }`}
                     >
-                      <option value="">Select brand</option>
+                      <option value="">Select brand{formData.category === 'grocery' ? ' (optional)' : ''}</option>
+                      {formData.category === 'grocery' && (
+                        <option value="None">None</option>
+                      )}
                       {getBrandsBySubcategory().map(brand => (
                         <option key={brand} value={brand}>
                           {brand}

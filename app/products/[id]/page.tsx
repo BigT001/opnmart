@@ -4,14 +4,18 @@ import Link from 'next/link';
 import { ArrowLeft, ShoppingCart, Heart, Share2, Loader, Star, Truck, Shield, RotateCcw, ChevronLeft, ChevronRight, Check, Zap, Award } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { use } from 'react';
+import { useCart } from '@/app/context/CartContext';
 
 export default function ProductDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const { addToCart } = useCart();
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [addToCartMessage, setAddToCartMessage] = useState('');
 
   // Combine main image with additional images - fixed to handle null product
   const allImages = product && product.image 
@@ -51,6 +55,38 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
     };
     fetchProduct();
   }, [id]);
+
+  const handleAddToCart = () => {
+    if (!product || product.stock === 0) return;
+    
+    setIsAddingToCart(true);
+    
+    try {
+      addToCart({
+        id: product._id || product.id,
+        name: product.name,
+        price: product.price,
+        image: product.image,
+        quantity,
+        category: product.category,
+        subcategory: product.subcategory,
+        brand: product.brand,
+        vendorId: product.vendorId,
+      });
+      
+      setAddToCartMessage('Added to cart!');
+      setQuantity(1);
+      
+      setTimeout(() => {
+        setAddToCartMessage('');
+      }, 2000);
+    } catch (error) {
+      console.error('Failed to add to cart:', error);
+      setAddToCartMessage('Failed to add to cart');
+    } finally {
+      setIsAddingToCart(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -254,13 +290,25 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
               </div>
 
               {/* Main Action Button */}
-              <button 
-                disabled={product.stock === 0}
-                className="w-full bg-gradient-to-r from-emerald-500 to-cyan-600 hover:from-emerald-600 hover:to-cyan-700 disabled:from-slate-300 disabled:to-slate-400 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl flex items-center justify-center gap-3 transition shadow-lg hover:shadow-xl"
-              >
-                <ShoppingCart className="w-5 h-5" />
-                {product.stock > 0 ? 'Add to Cart' : 'Out of Stock'}
-              </button>
+              <div className="space-y-2">
+                <button 
+                  onClick={handleAddToCart}
+                  disabled={product.stock === 0 || isAddingToCart}
+                  className="w-full bg-gradient-to-r from-emerald-500 to-cyan-600 hover:from-emerald-600 hover:to-cyan-700 disabled:from-slate-300 disabled:to-slate-400 disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl flex items-center justify-center gap-3 transition shadow-lg hover:shadow-xl"
+                >
+                  <ShoppingCart className="w-5 h-5" />
+                  {isAddingToCart ? 'Adding...' : product.stock > 0 ? 'Add to Cart' : 'Out of Stock'}
+                </button>
+                {addToCartMessage && (
+                  <p className={`text-center text-sm font-semibold py-2 rounded-lg ${
+                    addToCartMessage.includes('Added') 
+                      ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400' 
+                      : 'bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400'
+                  }`}>
+                    {addToCartMessage}
+                  </p>
+                )}
+              </div>
 
               {/* Secondary Actions */}
               <div className="grid grid-cols-2 gap-3">
