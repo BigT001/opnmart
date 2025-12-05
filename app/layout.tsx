@@ -5,6 +5,7 @@ import { ReactQueryProvider } from "@/components/providers/ReactQueryProvider";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { ProductProvider } from "@/app/context/ProductContext";
 import { CartProvider } from "@/app/context/CartContext";
+import { ToastProvider } from "@/app/context/ToastContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,9 +35,11 @@ export default function RootLayout({
         <ThemeProvider>
           <ProductProvider>
             <CartProvider>
-              <ReactQueryProvider>
-                {children}
-              </ReactQueryProvider>
+              <ToastProvider>
+                <ReactQueryProvider>
+                  {children}
+                </ReactQueryProvider>
+              </ToastProvider>
             </CartProvider>
           </ProductProvider>
         </ThemeProvider>

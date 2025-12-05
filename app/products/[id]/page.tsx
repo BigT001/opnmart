@@ -5,17 +5,18 @@ import { ArrowLeft, ShoppingCart, Heart, Share2, Loader, Star, Truck, Shield, Ro
 import { useState, useEffect } from 'react';
 import { use } from 'react';
 import { useCart } from '@/app/context/CartContext';
+import { useToast } from '@/app/context/ToastContext';
 
 export default function ProductDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { addToCart } = useCart();
+  const { addToCart, isItemInCart } = useCart();
+  const { addToast } = useToast();
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
-  const [addToCartMessage, setAddToCartMessage] = useState('');
 
   // Combine main image with additional images - fixed to handle null product
   const allImages = product && product.image 
@@ -59,11 +60,19 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
   const handleAddToCart = () => {
     if (!product || product.stock === 0) return;
     
+    const productId = product._id || product.id;
+    
+    // Check if item already in cart
+    if (isItemInCart(productId)) {
+      addToast('Already added to cart', 'warning', 3000);
+      return;
+    }
+    
     setIsAddingToCart(true);
     
     try {
       addToCart({
-        id: product._id || product.id,
+        id: productId,
         name: product.name,
         price: product.price,
         image: product.image,
@@ -74,15 +83,11 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
         vendorId: product.vendorId,
       });
       
-      setAddToCartMessage('Added to cart!');
+      addToast('Added to cart!', 'success', 2500);
       setQuantity(1);
-      
-      setTimeout(() => {
-        setAddToCartMessage('');
-      }, 2000);
     } catch (error) {
       console.error('Failed to add to cart:', error);
-      setAddToCartMessage('Failed to add to cart');
+      addToast('Failed to add to cart', 'error', 3000);
     } finally {
       setIsAddingToCart(false);
     }
@@ -299,15 +304,6 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
                   <ShoppingCart className="w-5 h-5" />
                   {isAddingToCart ? 'Adding...' : product.stock > 0 ? 'Add to Cart' : 'Out of Stock'}
                 </button>
-                {addToCartMessage && (
-                  <p className={`text-center text-sm font-semibold py-2 rounded-lg ${
-                    addToCartMessage.includes('Added') 
-                      ? 'bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400' 
-                      : 'bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-400'
-                  }`}>
-                    {addToCartMessage}
-                  </p>
-                )}
               </div>
 
               {/* Secondary Actions */}

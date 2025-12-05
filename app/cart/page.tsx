@@ -14,9 +14,8 @@ export default function CartPage() {
   const formatPrice = (price: number) => '₦' + price.toLocaleString();
 
   const subtotal = getCartTotal();
-  const shipping = cart.length > 0 ? 5000 : 0;
   const tax = Math.round(subtotal * 0.075);
-  const total = subtotal + shipping + tax;
+  const total = subtotal + tax; // Shipping will be calculated on checkout page
 
   const handleCheckout = () => {
     setIsCheckingOut(true);
@@ -141,12 +140,6 @@ export default function CartPage() {
                   <span>{formatPrice(subtotal)}</span>
                 </div>
 
-                {/* Shipping */}
-                <div className="flex justify-between text-slate-700 dark:text-slate-300 text-sm">
-                  <span>Shipping</span>
-                  <span className="text-green-600 dark:text-green-400 font-semibold">{formatPrice(shipping)}</span>
-                </div>
-
                 {/* Tax */}
                 <div className="flex justify-between text-slate-700 dark:text-slate-300 text-sm border-b border-slate-300 dark:border-slate-700 pb-4">
                   <span>Tax (7.5%)</span>
@@ -172,7 +165,7 @@ export default function CartPage() {
 
                 {/* Continue Shopping */}
                 <Link
-                  href="/products"
+                  href="/"
                   className="w-full block text-center bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-900 dark:text-white rounded-lg py-2 font-semibold transition"
                 >
                   Continue Shopping
@@ -186,7 +179,7 @@ export default function CartPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-green-500">✓</span>
-                    <span>Fast Delivery (1-3 days)</span>
+                    <span>Fast Delivery</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-green-500">✓</span>

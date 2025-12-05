@@ -6,6 +6,7 @@
 import Link from 'next/link';
 import { ShoppingCart } from 'lucide-react';
 import { useCart } from '@/app/context/CartContext';
+import { useToast } from '@/app/context/ToastContext';
 
 interface ProductCardProps {
   product: any;
@@ -13,7 +14,8 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product, variant = 'compact' }: ProductCardProps) {
-  const { addToCart } = useCart();
+  const { addToCart, isItemInCart } = useCart();
+  const { addToast } = useToast();
 
   // Return null if product is invalid
   if (!product || !product.name || !product.price) {
@@ -31,8 +33,16 @@ export default function ProductCard({ product, variant = 'compact' }: ProductCar
 
   const handleAddToCart = () => {
     if ((product.stock ?? 0) > 0) {
+      const productId = product._id || product.id;
+      
+      // Check if item already in cart
+      if (isItemInCart(productId)) {
+        addToast('Already added to cart', 'warning', 3000);
+        return;
+      }
+      
       addToCart({
-        id: product._id || product.id,
+        id: productId,
         name: product.name,
         price: product.price,
         image: product.image,
@@ -42,6 +52,8 @@ export default function ProductCard({ product, variant = 'compact' }: ProductCar
         brand: product.brand,
         vendorId: product.vendorId,
       });
+      
+      addToast('Added to cart!', 'success', 2500);
     }
   };
 
@@ -49,7 +61,7 @@ export default function ProductCard({ product, variant = 'compact' }: ProductCar
   if (variant === 'compact') {
     return (
       <div className="bg-slate-50 dark:bg-slate-900/50 rounded-lg overflow-hidden hover:shadow-lg transition border border-slate-200 dark:border-green-500/20 hover:border-green-500/50 dark:hover:border-green-500/50 transition flex flex-col h-full">
-        <div className="relative h-48 bg-slate-200 dark:bg-slate-800 overflow-hidden">
+        <div className="relative h-64 bg-slate-200 dark:bg-slate-800 overflow-hidden flex-shrink-0">
           <img
             src={product.image || 'https://via.placeholder.com/400x300'}
             alt={product.name}
@@ -71,26 +83,16 @@ export default function ProductCard({ product, variant = 'compact' }: ProductCar
             {product.brand}
           </p>
 
-          <div className="mb-3">
+          <div className="mb-3 flex items-center gap-2">
             <div className="text-lg font-bold text-green-600 dark:text-green-400">
               {formatPrice(product.price)}
             </div>
             {product.oldPrice && product.oldPrice > product.price && (
-              <div className="text-xs text-slate-500 line-through">
+              <div className="text-sm text-slate-500 line-through">
                 {formatPrice(product.oldPrice)}
               </div>
             )}
           </div>
-
-          {product.rating && (
-            <div className="flex items-center gap-1 mb-3">
-              <span className="text-yellow-400">★</span>
-              <span className="text-xs font-semibold">{product.rating}/5</span>
-              <span className="text-xs text-slate-500">
-                ({product.reviewCount || 0})
-              </span>
-            </div>
-          )}
 
           <div className="grid grid-cols-2 gap-2 mt-auto">
             <Link
@@ -122,7 +124,7 @@ export default function ProductCard({ product, variant = 'compact' }: ProductCar
     >
       <div className="bg-white dark:bg-slate-900 rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition duration-300 border border-slate-200 dark:border-slate-800 h-full flex flex-col">
         {/* Image Section */}
-        <div className="relative bg-gradient-to-br from-slate-100 to-slate-50 dark:from-slate-800 dark:to-slate-900 h-44 sm:h-52 flex items-center justify-center overflow-hidden">
+        <div className="relative bg-gradient-to-br from-slate-100 to-slate-50 dark:from-slate-800 dark:to-slate-900 h-72 sm:h-80 flex items-center justify-center overflow-hidden flex-shrink-0">
           <img
             src={product.image || 'https://via.placeholder.com/400x300'}
             alt={product.name}
@@ -159,31 +161,14 @@ export default function ProductCard({ product, variant = 'compact' }: ProductCar
             {product.name}
           </h3>
 
-          {/* Rating */}
-          <div className="flex items-center gap-2 mb-4">
-            <div className="flex text-green-400 gap-0.5">
-              {[...Array(5)].map((_, i) => (
-                <span
-                  key={i}
-                  className={`h-3 w-3 ${i < Math.floor(product.rating || 4) ? 'text-green-400 fill-green-400' : 'text-slate-400 dark:text-slate-700'}`}
-                >
-                  ★
-                </span>
-              ))}
-            </div>
-            <span className="text-xs text-slate-600 dark:text-slate-400 font-medium">
-              ({product.reviews || product.reviewCount || 0})
-            </span>
-          </div>
-
           {/* Price Section */}
           <div className="mb-4 pb-4 border-b border-slate-200 dark:border-slate-800">
-            <div className="flex items-baseline gap-2">
+            <div className="flex items-baseline gap-3">
               <span className="text-2xl font-black text-transparent bg-gradient-to-r from-green-500 to-cyan-500 bg-clip-text">
                 {formatPrice(product.price)}
               </span>
               {product.oldPrice && (
-                <span className="text-xs text-slate-500 dark:text-slate-600 line-through font-medium">
+                <span className="text-lg text-slate-500 dark:text-slate-600 line-through font-semibold">
                   {formatPrice(product.oldPrice)}
                 </span>
               )}

@@ -162,6 +162,22 @@ export default function Home() {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      // Check if the click is outside the profile menu
+      if (!target.closest('[data-profile-menu]')) {
+        setShowProfileMenu(false);
+      }
+    };
+
+    if (showProfileMenu) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [showProfileMenu]);
+
   const checkSessionAfterAuth = async () => {
     try {
       console.log('[HOME PAGE] Refreshing session after auth...');
@@ -319,7 +335,7 @@ export default function Home() {
               {/* Profile Menu or Auth Buttons */}
               {vendor || buyer ? (
                 // Logged In - Account Button with Avatar
-                <div className="relative">
+                <div className="relative" data-profile-menu>
                   <button
                     onClick={() => setShowProfileMenu(!showProfileMenu)}
                     className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gradient-to-br from-green-500 to-cyan-500 text-black hover:shadow-lg hover:shadow-green-500/50 transition-all duration-300 font-semibold text-sm"
@@ -334,16 +350,7 @@ export default function Home() {
 
                   {/* Dropdown Menu */}
                   {showProfileMenu && (
-                    <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-zinc-900 rounded-lg shadow-xl border border-green-500/30 z-50 overflow-hidden">
-                      <div className="px-4 py-3 border-b border-green-500/20 bg-gray-50 dark:bg-zinc-800">
-                        <p className="text-sm font-semibold text-black dark:text-white">
-                          {vendor ? (vendor.storeName || vendor.tradingName) : `${buyer.firstName} ${buyer.lastName}`}
-                        </p>
-                        <p className="text-xs text-gray-600 dark:text-gray-400">{vendor ? vendor.email : buyer.email}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                          {vendor ? '🏪 Vendor' : '🛍️ Buyer'}
-                        </p>
-                      </div>
+                    <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-zinc-900 rounded-lg shadow-xl border border-green-500/30 z-50 overflow-hidden" data-profile-menu>
                       <button
                         onClick={(e) => {
                           console.log('[HOME PAGE] Dashboard button clicked, event:', e);
