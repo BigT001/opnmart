@@ -66,31 +66,21 @@ export default function VendorDashboard() {
     const fetchSession = async () => {
       try {
         console.log('[VENDOR_DASHBOARD] fetchSession called for vendorId:', vendorId);
-        const response = await fetch('/api/auth/session', {
-          credentials: 'include',
-        });
-        const data = await response.json();
-        console.log('[VENDOR_DASHBOARD] Session data:', data);
-
-        if (!data.vendor) {
-          console.log('[VENDOR_DASHBOARD] No vendor in session, redirecting to home');
+        const storedVendor = localStorage.getItem('vendor');
+        if (!storedVendor) {
+          console.log('[VENDOR_DASHBOARD] No vendor in localStorage, redirecting to home');
           setError('Unauthorized: You must be a registered vendor to access this page');
           setTimeout(() => router.push('/'), 2000);
           return;
         }
 
-        if (data.buyer && !data.vendor) {
-          console.log('[VENDOR_DASHBOARD] Buyer trying to access vendor dashboard');
-          setError('Unauthorized: Buyers cannot access vendor dashboard');
-          setTimeout(() => router.push('/'), 2000);
-          return;
-        }
+        const data = JSON.parse(storedVendor);
+        console.log('[VENDOR_DASHBOARD] Vendor data:', data);
 
-        console.log('[VENDOR_DASHBOARD] Vendor found:', data.vendor.email);
-        console.log('[VENDOR_DASHBOARD] Checking authorization: vendor._id =', data.vendor._id, 'vendorId =', vendorId);
+        console.log('[VENDOR_DASHBOARD] Checking authorization: vendor._id =', data._id, 'vendorId =', vendorId);
 
         // SECURITY: Verify that the logged-in vendor's ID matches the requested vendorId
-        if (data.vendor._id !== vendorId) {
+        if (data._id !== vendorId) {
           console.error('[VENDOR_DASHBOARD] Authorization failed: vendor trying to access different dashboard');
           setError('Unauthorized: You cannot access another vendor\'s dashboard');
           setTimeout(() => router.push('/'), 2000);
@@ -99,12 +89,12 @@ export default function VendorDashboard() {
 
         console.log('[VENDOR_DASHBOARD] Authorization successful, setting vendor');
         console.log('[VENDOR_DASHBOARD] Vendor data:', {
-          storeName: data.vendor.storeName,
-          email: data.vendor.email,
-          businessCategory: data.vendor.businessCategory,
-          _id: data.vendor._id,
+          name: data.name,
+          email: data.email,
+          role: data.role,
+          _id: data._id,
         });
-        setVendor(data.vendor);
+        setVendor(data);
       } catch (error) {
         console.error('[VENDOR_DASHBOARD] Error fetching session:', error);
         setError('Error loading vendor session');

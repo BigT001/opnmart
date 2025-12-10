@@ -22,6 +22,7 @@ export enum WARRANTY_PERIOD {
 export const CATEGORIES = {
   ELECTRONICS: 'electronics',
   APPLIANCES: 'appliances',
+  FASHION: 'fashion',
 } as const;
 
 export const SUBCATEGORIES = {
@@ -101,6 +102,51 @@ export const SUBCATEGORIES = {
 
   // 10. Home Appliances
   HOME_APPLIANCES: 'home_appliances',
+
+  // ==================== FASHION ====================
+  // 1. Clothing
+  MENS_CLOTHING: 'mens_clothing',
+  WOMENS_CLOTHING: 'womens_clothing',
+  KIDS_CLOTHING: 'kids_clothing',
+  ACTIVEWEAR: 'activewear',
+
+  // 2. Footwear
+  MENS_SHOES: 'mens_shoes',
+  WOMENS_SHOES: 'womens_shoes',
+  KIDS_SHOES: 'kids_shoes',
+  SNEAKERS: 'sneakers',
+  BOOTS: 'boots',
+  SANDALS: 'sandals',
+  SPORTS_SHOES: 'sports_shoes',
+
+  // 3. Accessories
+  BAGS: 'bags',
+  BELTS: 'belts',
+  SCARVES: 'scarves',
+  HATS: 'hats',
+  GLOVES: 'gloves',
+  JEWELRY: 'jewelry',
+  SUNGLASSES: 'sunglasses',
+  WATCHES: 'watches',
+
+  // 4. Traditional & Cultural Wear
+  MENS_TRADITIONAL: 'mens_traditional',
+  WOMENS_TRADITIONAL: 'womens_traditional',
+  KIDS_TRADITIONAL: 'kids_traditional',
+  FABRICS: 'fabrics',
+
+  // 5. Swimwear & Beachwear
+  WOMENS_SWIMWEAR: 'womens_swimwear',
+  MENS_SWIMWEAR: 'mens_swimwear',
+  KIDS_SWIMWEAR: 'kids_swimwear',
+  BEACH_ACCESSORIES: 'beach_accessories',
+
+  // 6. Innerwear & Lingerie
+  BRAS: 'bras',
+  BRIEFS: 'briefs',
+  BOXERS: 'boxers',
+  LINGERIE: 'lingerie',
+  SLEEPWEAR: 'sleepwear',
 } as const;
 
 export const SUBCATEGORY_DETAILS = {
@@ -607,4 +653,49 @@ export const BRANDS_BY_SUBCATEGORY = {
   [SUBCATEGORIES.INVERTER_SOLAR]: ['Luminous', 'Inverex', 'APC', 'Genus', 'Techno', 'Nexus', 'Megatech', 'Sunseeker'],
   [SUBCATEGORIES.KITCHEN_APPLIANCES]: ['Panasonic', 'LG', 'Samsung', 'Hisense', 'Scanfrost', 'Midea', 'Binatone', 'Hotpoint', 'Nasco'],
   [SUBCATEGORIES.HOME_APPLIANCES]: ['LG', 'Samsung', 'Haier', 'Hisense', 'Scanfrost', 'Midea', 'Indesit', 'Ariston'],
+
+  // ==================== FASHION ====================
+  // Clothing
+  [SUBCATEGORIES.MENS_CLOTHING]: ['Nike', 'Adidas', 'Puma', 'Tommy Hilfiger', 'Ralph Lauren', 'Calvin Klein', 'Lacoste', 'Polo', 'Gucci', 'Versace'],
+  [SUBCATEGORIES.WOMENS_CLOTHING]: ['Zara', 'H&M', 'Nike', 'Adidas', 'ASOS', 'Urban Outfitters', 'Calvin Klein', 'Tommy Hilfiger', 'Gucci', 'Prada'],
+  [SUBCATEGORIES.KIDS_CLOTHING]: ['Nike Kids', 'Adidas Kids', 'Puma Kids', 'H&M Kids', 'ASOS Kids', 'Carter\'s', 'Old Navy', 'Gap Kids'],
+  [SUBCATEGORIES.ACTIVEWEAR]: ['Nike', 'Adidas', 'Puma', 'Under Armour', 'Lululemon', 'Gymshark', 'Reebok', 'Alo Yoga'],
+
+  // Footwear
+  [SUBCATEGORIES.MENS_SHOES]: ['Nike', 'Adidas', 'Puma', 'Clarks', 'Dr. Martens', 'Timberland', 'Converse', 'Vans', 'Gucci', 'Burberry'],
+  [SUBCATEGORIES.WOMENS_SHOES]: ['Nike', 'Adidas', 'Puma', 'Converse', 'Vans', 'New Balance', 'Clarks', 'Gucci', 'Louis Vuitton', 'Prada'],
+  [SUBCATEGORIES.KIDS_SHOES]: ['Nike Kids', 'Adidas Kids', 'Puma Kids', 'Converse Kids', 'New Balance Kids', 'Clarks Kids'],
+  [SUBCATEGORIES.SNEAKERS]: ['Nike', 'Adidas', 'Puma', 'Converse', 'Vans', 'New Balance', 'Reebok', 'Fila', 'Skechers'],
+  [SUBCATEGORIES.BOOTS]: ['Timberland', 'Dr. Martens', 'UGG', 'Clarks', 'Salomon', 'Caterpillar', 'Wolverine', 'Merrell'],
+  [SUBCATEGORIES.SANDALS]: ['Birkenstock', 'Clarks', 'Crocs', 'Teva', 'Reef', 'Birkenstock', 'Skechers', 'Nike'],
+  [SUBCATEGORIES.SPORTS_SHOES]: ['Nike', 'Adidas', 'Puma', 'New Balance', 'Asics', 'Saucony', 'Brooks', 'Mizuno'],
+
+  // Accessories
+  [SUBCATEGORIES.BAGS]: ['Gucci', 'Louis Vuitton', 'Coach', 'Michael Kors', 'Prada', 'Burberry', 'Fendi', 'Celine', 'Hermes', 'Versace'],
+  [SUBCATEGORIES.BELTS]: ['Gucci', 'Louis Vuitton', 'Prada', 'Burberry', 'Coach', 'Tommy Hilfiger', 'Lacoste', 'Hugo Boss'],
+  [SUBCATEGORIES.SCARVES]: ['Burberry', 'Hermès', 'Gucci', 'Louis Vuitton', 'Prada', 'Versace', 'Dolce & Gabbana', 'Givenchy'],
+  [SUBCATEGORIES.HATS]: ['Nike', 'Adidas', 'Puma', 'New Era', 'Carhartt', 'Tommy Hilfiger', 'Ralph Lauren', 'The North Face'],
+  [SUBCATEGORIES.GLOVES]: ['The North Face', 'Columbia', 'Dakine', 'Timberland', 'UGG', 'Marmot', 'Hestra'],
+  [SUBCATEGORIES.JEWELRY]: ['Pandora', 'Swarovski', 'Cartier', 'Tiffany & Co', 'Georg Jensen', 'David Yurman', 'Chopard'],
+  [SUBCATEGORIES.SUNGLASSES]: ['Ray-Ban', 'Oakley', 'Gucci', 'Prada', 'Versace', 'Tom Ford', 'Dolce & Gabbana', 'Burberry'],
+  [SUBCATEGORIES.WATCHES]: ['Rolex', 'Omega', 'Tag Heuer', 'Fossil', 'Timex', 'Seiko', 'Casio', 'Citizen'],
+
+  // Traditional & Cultural Wear
+  [SUBCATEGORIES.MENS_TRADITIONAL]: ['Vlisco', 'Ankara Premium', 'Akuaba', 'Lekela London', 'Dala Designs'],
+  [SUBCATEGORIES.WOMENS_TRADITIONAL]: ['Vlisco', 'Ankara Premium', 'Akuaba', 'Lekela London', 'Mami Wata London', 'Rhoweaa'],
+  [SUBCATEGORIES.KIDS_TRADITIONAL]: ['Vlisco', 'Ankara Premium', 'Akuaba', 'Lekela London'],
+  [SUBCATEGORIES.FABRICS]: ['Vlisco', 'Ankara Premium', 'Akuaba', 'Super Wax', 'Guaranteed Wax'],
+
+  // Swimwear & Beachwear
+  [SUBCATEGORIES.WOMENS_SWIMWEAR]: ['Speedo', 'Rip Curl', 'Billabong', 'O\'Neill', 'Seafolly', 'Vitamin A'],
+  [SUBCATEGORIES.MENS_SWIMWEAR]: ['Speedo', 'Billabong', 'Quiksilver', 'Rip Curl', 'Hurley', 'Vans'],
+  [SUBCATEGORIES.KIDS_SWIMWEAR]: ['Speedo', 'Rip Curl', 'Billabong', 'O\'Neill', 'Zoggs'],
+  [SUBCATEGORIES.BEACH_ACCESSORIES]: ['Rip Curl', 'Billabong', 'O\'Neill', 'Quiksilver', 'Vans'],
+
+  // Innerwear & Lingerie
+  [SUBCATEGORIES.BRAS]: ['Victoria\'s Secret', 'Triumph', 'Playtex', 'Calvin Klein', 'Tommy John', 'Spanx'],
+  [SUBCATEGORIES.BRIEFS]: ['Calvin Klein', 'Tommy Hilfiger', 'Jockey', 'Hanes', 'Fruit of the Loom', 'Under Armour'],
+  [SUBCATEGORIES.BOXERS]: ['Calvin Klein', 'Jockey', 'Tommy Hilfiger', 'Under Armour', 'Hanes', 'Adidas'],
+  [SUBCATEGORIES.LINGERIE]: ['Victoria\'s Secret', 'Agent Provocateur', 'La Perla', 'Fleur du Mal', 'Savage X Fenty'],
+  [SUBCATEGORIES.SLEEPWEAR]: ['Victoria\'s Secret', 'Calvin Klein', 'Tommy Hilfiger', 'Hanes', 'Jockey', 'Fruit of the Loom'],
 } as const;

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useCart } from '@/app/context/CartContext';
 import { Check, Lock, Truck, AlertCircle, MapPin } from 'lucide-react';
 import { calculateShipping, getEstimatedDeliveryDate, type ShippingCalculation } from '@/utils/shippingCalculator';
+import SignUpModal from '@/components/AuthModals/SignUpModal';
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -15,6 +16,31 @@ export default function CheckoutPage() {
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [shippingCalculation, setShippingCalculation] = useState<ShippingCalculation | null>(null);
   const [estimatedDelivery, setEstimatedDelivery] = useState<Date | null>(null);
+  const [buyer, setBuyer] = useState<any>(null);
+  const [showSignUpModal, setShowSignUpModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Check if buyer is logged in on mount
+  useEffect(() => {
+    const checkBuyerAuth = () => {
+      try {
+        const storedBuyer = localStorage.getItem('buyer');
+        if (storedBuyer) {
+          setBuyer(JSON.parse(storedBuyer));
+        } else {
+          // Buyer not logged in - show signup modal
+          setShowSignUpModal(true);
+        }
+      } catch (error) {
+        console.error('Auth check error:', error);
+        setShowSignUpModal(true);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkBuyerAuth();
+  }, []);
 
   // Form states
   const [shippingInfo, setShippingInfo] = useState({
@@ -71,6 +97,53 @@ export default function CheckoutPage() {
           <Link href="/products" className="inline-block bg-gradient-to-r from-green-500 to-cyan-500 text-black px-6 py-2 rounded-full font-semibold">
             Continue Shopping
           </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Show signup modal if buyer is not authenticated
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
+          <p className="text-slate-600 dark:text-slate-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!buyer && showSignUpModal) {
+    return (
+      <div className="min-h-screen bg-white dark:bg-black">
+        <header className="sticky top-0 z-40 bg-white/95 dark:bg-black/95 backdrop-blur border-b border-green-500/30">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <Link href="/" className="flex items-center gap-2 font-bold text-2xl">
+              <span className="text-3xl">🛒</span>
+              <span className="bg-gradient-to-r from-green-400 to-cyan-400 bg-clip-text text-transparent">OpnMart</span>
+            </Link>
+          </div>
+        </header>
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <div className="max-w-md mx-auto bg-white dark:bg-slate-900 rounded-lg shadow-lg p-8 border border-green-500/30">
+            <div className="text-center mb-6">
+              <Lock className="w-12 h-12 text-green-500 mx-auto mb-4" />
+              <h2 className="text-2xl font-bold text-black dark:text-white mb-2">Checkout Required</h2>
+              <p className="text-slate-600 dark:text-slate-400">You need to sign up or log in before you can proceed with checkout</p>
+            </div>
+            <SignUpModal 
+              isOpen={showSignUpModal}
+              onClose={() => {
+                const storedBuyer = localStorage.getItem('buyer');
+                if (storedBuyer) {
+                  setBuyer(JSON.parse(storedBuyer));
+                  setShowSignUpModal(false);
+                }
+              }}
+              onSwitchToLogin={() => setShowSignUpModal(false)}
+            />
+          </div>
         </div>
       </div>
     );

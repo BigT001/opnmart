@@ -67,21 +67,15 @@ export default function VendorSignUpPage() {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await fetch('/api/categories');
+        const response = await fetch('http://localhost:3001/categories');
         const data = await response.json();
         
-        if (data.success && data.data && Array.isArray(data.data)) {
-          const categoryNames = data.data.map((cat: any) => cat.name).sort();
-          if (categoryNames.length > 0) {
-            setBusinessCategories(categoryNames);
-            console.log('[VENDOR_SIGNUP] Loaded categories:', categoryNames);
-          } else {
-            console.warn('[VENDOR_SIGNUP] No categories found, using defaults');
-            setBusinessCategories(['Electronics', 'Fashion & Clothing', 'Home & Garden', 'Sports & Outdoors', 'Books & Media', 'Health & Beauty', 'Toys & Games', 'Food & Beverages', 'Automotive', 'Appliances']);
-          }
+        if (Array.isArray(data) && data.length > 0) {
+          const categoryNames = data.map((cat: any) => cat.name).sort();
+          setBusinessCategories(categoryNames);
+          console.log('[VENDOR_SIGNUP] Loaded categories:', categoryNames);
         } else {
-          console.warn('[VENDOR_SIGNUP] Invalid response format:', data);
-          // Use default categories if API fails
+          console.warn('[VENDOR_SIGNUP] No categories found, using defaults');
           setBusinessCategories(['Electronics', 'Fashion & Clothing', 'Home & Garden', 'Sports & Outdoors', 'Books & Media', 'Health & Beauty', 'Toys & Games', 'Food & Beverages', 'Automotive', 'Appliances']);
         }
       } catch (error) {
@@ -104,23 +98,21 @@ export default function VendorSignUpPage() {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const response = await fetch('/api/auth/session', {
-          credentials: 'include',
-        });
-        const data = await response.json();
-        
-        if (data.buyer) {
+        // Try to get user data from localStorage (set during login)
+        const storedUser = localStorage.getItem('buyer');
+        if (storedUser) {
+          const data = JSON.parse(storedUser);
           // Auto-populate with buyer data
           setFormData((prev) => ({
             ...prev,
-            fullName: data.buyer.firstName ? `${data.buyer.firstName} ${data.buyer.lastName || ''}`.trim() : '',
-            email: data.buyer.email || '',
-            phone: data.buyer.phone || '',
-            businessEmail: data.buyer.email || '',
-            businessPhone: data.buyer.phone || '',
-            repFullName: data.buyer.firstName ? `${data.buyer.firstName} ${data.buyer.lastName || ''}`.trim() : '',
-            repEmail: data.buyer.email || '',
-            repPhone: data.buyer.phone || '',
+            fullName: data.name || '',
+            email: data.email || '',
+            phone: data.phone || '',
+            businessEmail: data.email || '',
+            businessPhone: data.phone || '',
+            repFullName: data.name || '',
+            repEmail: data.email || '',
+            repPhone: data.phone || '',
           }));
         }
       } catch (error) {
@@ -248,7 +240,7 @@ export default function VendorSignUpPage() {
         businessCategories: selectedCategories,
       };
 
-      const response = await fetch('/api/auth/vendor-signup', {
+      const response = await fetch('http://localhost:3001/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(submitData),
@@ -259,7 +251,7 @@ export default function VendorSignUpPage() {
       if (!response.ok) throw new Error(data.message || 'Signup failed');
 
       // Get vendor ID from response
-      const vendorId = data.vendor._id;
+      const vendorId = data._id;
 
       setSuccessMessage('Vendor account created! Redirecting to your dashboard...');
       setTimeout(() => {

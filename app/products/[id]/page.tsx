@@ -1,7 +1,7 @@
 ﻿'use client';
 
 import Link from 'next/link';
-import { ArrowLeft, ShoppingCart, Heart, Share2, Loader, Star, Truck, Shield, RotateCcw, ChevronLeft, ChevronRight, Check, Zap, Award } from 'lucide-react';
+import { ArrowLeft, ShoppingCart, Heart, Share2, Loader, Star, Truck, Shield, RotateCcw, ChevronLeft, ChevronRight, Check, Zap, Award, MapPin, AlertCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { use } from 'react';
 import { useCart } from '@/app/context/CartContext';
@@ -9,7 +9,7 @@ import { useToast } from '@/app/context/ToastContext';
 
 export default function ProductDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { addToCart, isItemInCart } = useCart();
+  const { addToCart, isItemInCart, getCartCount, getCartItemQuantity, updateQuantity, cart } = useCart();
   const { addToast } = useToast();
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -17,6 +17,7 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [cartQtyDisplay, setCartQtyDisplay] = useState(0);
 
   // Combine main image with additional images - fixed to handle null product
   const allImages = product && product.image 
@@ -29,7 +30,7 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
     const fetchProduct = async () => {
       try {
         console.log(`Fetching product with ID: ${id}`);
-        const response = await fetch(`/api/products/${id}`);
+        const response = await fetch(`http://localhost:3001/products/${id}`);
         const data = await response.json();
         console.log(`API response status: ${response.status}`, data);
         
@@ -42,6 +43,14 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
               ? [{ url: data.product.image }, ...data.product.images]
               : [{ url: data.product.image }]);
             setProduct(data.product);
+            
+            // Load quantity from cart if item already exists
+            const productId = data.product._id || data.product.id;
+            const cartQuantity = getCartItemQuantity(productId);
+            if (cartQuantity > 0) {
+              setQuantity(cartQuantity);
+              setCartQtyDisplay(cartQuantity);
+            }
           } else {
             console.log('No product in response');
           }
@@ -57,6 +66,15 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
     fetchProduct();
   }, [id]);
 
+  // Sync cart quantity display whenever cart changes
+  useEffect(() => {
+    if (product) {
+      const productId = product._id || product.id;
+      const currentCartQty = getCartItemQuantity(productId);
+      setCartQtyDisplay(currentCartQty);
+    }
+  }, [cart, product]);
+
   const handleAddToCart = () => {
     if (!product || product.stock === 0) return;
     
@@ -64,13 +82,14 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
     
     // Check if item already in cart
     if (isItemInCart(productId)) {
-      addToast('Already added to cart', 'warning', 3000);
+      addToast('Already in cart', 'warning', 2500);
       return;
     }
     
     setIsAddingToCart(true);
     
     try {
+      // Add item to cart
       addToCart({
         id: productId,
         name: product.name,
@@ -82,7 +101,6 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
         brand: product.brand,
         vendorId: product.vendorId,
       });
-      
       addToast('Added to cart!', 'success', 2500);
       setQuantity(1);
     } catch (error) {
@@ -131,15 +149,25 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
             Back
           </Link>
           <h1 className="flex-1 text-center text-sm font-bold text-slate-900 dark:text-white truncate px-4">{product.name}</h1>
-          <button className="w-9 h-9" />
+          <Link 
+            href="/cart"
+            className="relative inline-flex items-center justify-center w-9 h-9 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white transition"
+          >
+            <ShoppingCart className="w-5 h-5" />
+            {getCartCount() > 0 && (
+              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                {getCartCount()}
+              </span>
+            )}
+          </Link>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-6 gap-6">
           
           {/* Image Section - Elegant & Clean */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-2 order-1">
             {/* Main Image Container */}
             <div className="relative bg-white dark:bg-slate-800 rounded-2xl overflow-hidden shadow-lg border border-slate-200 dark:border-slate-700 mb-4">
               <div className="aspect-square bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center relative group">
@@ -228,8 +256,100 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
             </div>
           </div>
 
+          {/* Information Card - Right Sidebar */}
+          <div className="lg:col-span-2 space-y-4 sticky top-24 h-fit order-3">
+            {/* Delivery Section */}
+            <div className="bg-white dark:bg-slate-800 rounded-xl p-5 border border-slate-200 dark:border-slate-700 space-y-4">
+              <div className="flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+                <Truck className="w-5 h-5 text-emerald-500" />
+                <h3 className="font-bold text-slate-900 dark:text-white">Delivery & Returns</h3>
+              </div>
+
+              {/* Same Day Delivery */}
+              <div>
+                <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-2">Same Day Delivery</p>
+                <div className="flex items-start gap-2">
+                  <MapPin className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-slate-700 dark:text-slate-300">
+                    <p className="font-semibold">Available in:</p>
+                    <p>Lagos</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">*Terms and conditions apply</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Estimated Delivery */}
+              <div className="pt-3 border-t border-slate-200 dark:border-slate-700">
+                <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-2">Delivery Time</p>
+                <p className="text-sm text-slate-700 dark:text-slate-300 font-semibold">1-9 business days</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">Order before 3PM for next-day delivery (Sundays excluded)</p>
+              </div>
+
+              {/* Return Policy */}
+              <div className="pt-3 border-t border-slate-200 dark:border-slate-700">
+                <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-2">Return Policy</p>
+                <p className="text-sm text-slate-700 dark:text-slate-300 font-semibold">7-Day Return Guarantee</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Full refund for eligible returns</p>
+              </div>
+
+              {/* Warranty */}
+              <div className="pt-3 border-t border-slate-200 dark:border-slate-700">
+                <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-2">Warranty</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Information not available for this item</p>
+              </div>
+            </div>
+
+            {/* Seller Information Card */}
+            <div className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-900 rounded-xl p-5 border border-slate-200 dark:border-slate-700 space-y-4">
+              <div className="flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-700">
+                <Award className="w-5 h-5 text-amber-500" />
+                <h3 className="font-bold text-slate-900 dark:text-white">Seller Information</h3>
+              </div>
+
+              {/* Seller Name */}
+              <div>
+                <p className="text-sm font-bold text-slate-900 dark:text-white mb-1">{product.vendorId || 'OpnMart Seller'}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">6+ Years selling on OpnMart</p>
+              </div>
+
+              {/* Seller Stats */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-white dark:bg-slate-800 rounded-lg p-3 text-center border border-slate-200 dark:border-slate-700">
+                  <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">5.1K+</p>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 font-semibold">Sales</p>
+                </div>
+                <div className="bg-white dark:bg-slate-800 rounded-lg p-3 text-center border border-slate-200 dark:border-slate-700">
+                  <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">96%</p>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 font-semibold">Quality</p>
+                </div>
+              </div>
+
+              {/* Ratings */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-white dark:bg-slate-800 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
+                  <div className="flex items-center gap-1 mb-1">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className="w-3 h-3 fill-amber-400 text-amber-400" />
+                    ))}
+                  </div>
+                  <p className="text-xs font-bold text-slate-900 dark:text-white">4.8/5</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">(315 reviews)</p>
+                </div>
+                <div className="bg-white dark:bg-slate-800 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
+                  <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">77%</p>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 font-semibold">Delivery Rate</p>
+                </div>
+              </div>
+
+              {/* View Store Button */}
+              <button className="w-full py-2 px-4 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-semibold border-2 border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition text-sm">
+                View Seller Store
+              </button>
+            </div>
+          </div>
+
           {/* Details Section - Polished & Professional */}
-          <div className="lg:col-span-2 space-y-5">
+          <div className="lg:col-span-2 space-y-5 order-2">
             
             {/* Product Title */}
             <div>
@@ -272,28 +392,57 @@ export default function ProductDetail({ params }: { params: Promise<{ id: string
               </div>
             </div>
 
-            {/* Quantity & Action Buttons */}
-            <div className="space-y-4 pt-2">
-              {/* Quantity */}
-              <div className="flex items-center gap-4">
-                <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Quantity</span>
-                <div className="flex items-center bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-300 dark:border-slate-600 w-fit">
-                  <button
-                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="w-10 h-10 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 transition"
-                  >
-                    −
-                  </button>
-                  <span className="w-8 text-center font-bold text-slate-900 dark:text-white">{quantity}</span>
-                  <button
-                    onClick={() => setQuantity(Math.min(product.stock, quantity + 1))}
-                    className="w-10 h-10 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 transition"
-                  >
-                    +
-                  </button>
-                </div>
+            {/* Quantity Card */}
+            <div className="bg-gradient-to-br from-emerald-50 to-cyan-50 dark:from-emerald-950/40 dark:to-cyan-950/40 rounded-xl p-5 border border-emerald-200 dark:border-emerald-800 space-y-4">
+              <div className="flex items-center gap-2 pb-3 border-b border-emerald-200 dark:border-emerald-800">
+                <ShoppingCart className="w-5 h-5 text-emerald-500" />
+                <h3 className="font-bold text-slate-900 dark:text-white">Quantity</h3>
               </div>
+              
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">
+                    {isItemInCart(product._id || product.id) ? cartQtyDisplay : quantity}
+                  </span>
+                  <div className="flex items-center bg-white dark:bg-slate-800 rounded-lg border border-emerald-300 dark:border-emerald-700">
+                    <button
+                      onClick={() => {
+                        if (isItemInCart(product._id || product.id)) {
+                          if (cartQtyDisplay > 1) {
+                            updateQuantity(product._id || product.id, cartQtyDisplay - 1);
+                            addToast('Quantity updated!', 'success', 2000);
+                          }
+                        } else {
+                          setQuantity(Math.max(1, quantity - 1));
+                        }
+                      }}
+                      className="w-10 h-10 flex items-center justify-center text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-slate-700 transition"
+                    >
+                      −
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (isItemInCart(product._id || product.id)) {
+                          updateQuantity(product._id || product.id, cartQtyDisplay + 1);
+                          addToast('Quantity updated!', 'success', 2000);
+                        } else {
+                          setQuantity(quantity + 1);
+                        }
+                      }}
+                      className="w-10 h-10 flex items-center justify-center text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-slate-700 transition"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+                <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-3 font-semibold">
+                  {isItemInCart(product._id || product.id) ? '✓ Item is in your cart' : '→ Add to cart below'}
+                </p>
+              </div>
+            </div>
 
+            {/* Action Buttons */}
+            <div className="space-y-4 pt-2">
               {/* Main Action Button */}
               <div className="space-y-2">
                 <button 

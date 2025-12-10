@@ -1,170 +1,112 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { connectDB } from '@/lib/db';
-import Buyer from '@/models/Buyer';
-import { generateToken, getAuthCookieHeader } from '@/lib/jwt';
 
-// Sign Up
-export async function POST(req: NextRequest) {
-  const { method } = req;
-
-  // Handle CORS
-  if (method === 'OPTIONS') {
-    return new NextResponse(null, {
-      status: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE',
-        'Access-Control-Allow-Headers': 'Content-Type',
-      },
-    });
-  }
-
+export async function POST(request: NextRequest) {
   try {
-    await connectDB();
-
-    const body = await req.json();
-    const { firstName, lastName, email, phone, phonePrefix, password, confirmPassword } = body;
-
-    console.log('[SIGNUP API] Signup attempt for:', email);
-
-    // Validation
-    if (!firstName || !lastName || !email || !phone || !password || !confirmPassword || !phonePrefix) {
+    const body = await request.json();
+    
+    console.log('[API] ===== SIGNUP REQUEST =====');
+    console.log('[API] Received signup request');
+    console.log('[API] Body keys:', Object.keys(body));
+    console.log('[API] Body values:', { 
+      email: body.email,
+      password: body.password ? '***' : 'MISSING',
+      firstName: body.firstName,
+      lastName: body.lastName,
+      phone: body.phone,
+      phonePrefix: body.phonePrefix,
+      confirmPassword: body.confirmPassword ? '***' : 'N/A'
+    });
+    
+    // Validate required fields
+    if (!body.email || !body.password || !body.firstName || !body.lastName || !body.phone) {
+      console.error('[API] ❌ Validation failed. Missing required fields:', { 
+        email: !!body.email ? '✅' : '❌ MISSING',
+        password: !!body.password ? '✅' : '❌ MISSING',
+        firstName: !!body.firstName ? '✅' : '❌ MISSING',
+        lastName: !!body.lastName ? '✅' : '❌ MISSING',
+        phone: !!body.phone ? '✅' : '❌ MISSING',
+        phonePrefix: !!body.phonePrefix ? '✅' : '⚠️ OPTIONAL'
+      });
       return NextResponse.json(
-        { error: 'All fields are required' },
+        { error: 'Missing required fields: email, password, firstName, lastName, phone' },
         { status: 400 }
       );
     }
+    
+    // Format the data for backend
+    const fullPhone = `${body.phonePrefix || '+234'}${body.phone}`;
+    const signupData = {
+      email: body.email,
+      password: body.password,
+      name: `${body.firstName} ${body.lastName}`,
+      phone: fullPhone,
+      role: 'buyer',
+    };
 
-    // Email validation
-    const emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
-    if (!emailRegex.test(email)) {
-      return NextResponse.json(
-        { error: 'Please provide a valid email address' },
-        { status: 400 }
-      );
-    }
-
-    // Phone validation (10 digits only)
-    const phoneRegex = /^[0-9]{10}$/;
-    if (!phoneRegex.test(phone)) {
-      return NextResponse.json(
-        { error: 'Phone number must be exactly 10 digits' },
-        { status: 400 }
-      );
-    }
-
-    // Phone prefix validation
-    const validPrefixes = ['+234', '+1', '+44', '+91', '+86', '+81', '+33', '+49', '+39', '+34', '+61'];
-    if (!validPrefixes.includes(phonePrefix)) {
-      return NextResponse.json(
-        { error: 'Invalid country code' },
-        { status: 400 }
-      );
-    }
-
-    // Name length validation
-    if (firstName.length < 2 || firstName.length > 50) {
-      return NextResponse.json(
-        { error: 'First name must be between 2 and 50 characters' },
-        { status: 400 }
-      );
-    }
-
-    if (lastName.length < 2 || lastName.length > 50) {
-      return NextResponse.json(
-        { error: 'Last name must be between 2 and 50 characters' },
-        { status: 400 }
-      );
-    }
-
-    // Password validation
-    if (password.length < 8) {
-      return NextResponse.json(
-        { error: 'Password must be at least 8 characters' },
-        { status: 400 }
-      );
-    }
-
-    if (password !== confirmPassword) {
-      return NextResponse.json(
-        { error: 'Passwords do not match' },
-        { status: 400 }
-      );
-    }
-
-    // Check password strength
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-    if (!passwordRegex.test(password)) {
-      return NextResponse.json(
-        {
-          error:
-            'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character',
-        },
-        { status: 400 }
-      );
-    }
-
-    // Check if buyer already exists
-    const existingBuyer = await Buyer.findOne({ email: email.toLowerCase() });
-    if (existingBuyer) {
-      return NextResponse.json(
-        { error: 'Email already registered' },
-        { status: 400 }
-      );
-    }
-
-    // Create new buyer
-    const buyer = new Buyer({
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      email: email.toLowerCase().trim(),
-      phone: phone.trim(),
-      phonePrefix: phonePrefix,
-      password,
-      addresses: [],
-      wishlists: [],
-      orders: [],
+    console.log('[API] ✅ Validation passed. Calling backend signup...');
+    console.log('[API] Sending to backend:', { 
+      email: signupData.email, 
+      name: signupData.name,
+      phone: signupData.phone 
     });
 
-    await buyer.save();
-    console.log('[SIGNUP API] Buyer created successfully:', email);
+    console.log('[API] Making fetch call to backend...');
+    let response;
+    try {
+      response = await fetch('http://localhost:3001/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(signupData),
+      });
+      console.log('[API] Fetch completed. Status:', response.status);
+    } catch (fetchError) {
+      console.error('[API] ❌ Fetch error (network issue):', fetchError);
+      return NextResponse.json(
+        { error: `Network error: ${fetchError instanceof Error ? fetchError.message : 'Unknown error'}` },
+        { status: 503 }
+      );
+    }
 
-    // Don't return password
-    const buyerResponse = buyer.toObject();
-    delete (buyerResponse as any).password;
+    let data;
+    try {
+      data = await response.json();
+      console.log('[API] Parsed response JSON successfully');
+    } catch (parseError) {
+      console.error('[API] ❌ Failed to parse response JSON:', parseError);
+      const text = await response.text();
+      console.error('[API] Response text:', text);
+      return NextResponse.json(
+        { error: 'Invalid response from backend' },
+        { status: 502 }
+      );
+    }
+    
+    if (!response.ok) {
+      console.error('[API] ❌ Backend returned error:', response.status, data);
+      return NextResponse.json(
+        { error: data.message || 'Signup failed' },
+        { status: response.status }
+      );
+    }
 
-    // Generate JWT token
-    const token = generateToken(buyer._id.toString(), buyer.email);
-    console.log('[SIGNUP API] JWT token generated for userId:', buyer._id);
-
-    // Create response with cookie header
-    const response = NextResponse.json(
+    console.log('[API] ✅ Backend signup successful for:', signupData.email);
+    
+    // Store token and user info in response headers for client to handle
+    return NextResponse.json(
       {
         success: true,
-        message: 'Account created successfully',
-        buyer: buyerResponse,
+        access_token: data.access_token,
+        user: data.user,
+        message: 'Signup successful',
       },
       { status: 201 }
     );
-
-    // Set secure httpOnly cookie via Set-Cookie header
-    const cookieHeader = getAuthCookieHeader(token);
-    console.log('[SIGNUP API] Setting cookie header');
-    response.headers.set('Set-Cookie', cookieHeader);
-
-    return response;
-  } catch (error: any) {
-    console.error('[SIGNUP API] Error:', error);
-
-    if (error.code === 11000) {
-      return NextResponse.json(
-        { error: 'Email already registered' },
-        { status: 400 }
-      );
-    }
-
+  } catch (error) {
+    console.error('[API] ❌ Signup error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    console.error('[API] Error details:', errorMessage);
     return NextResponse.json(
-      { error: error.message || 'Failed to create account' },
+      { error: errorMessage },
       { status: 500 }
     );
   }

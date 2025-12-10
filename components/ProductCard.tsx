@@ -4,9 +4,11 @@
 // Supports two variants: 'grid' (homepage) and 'compact' (products page)
 
 import Link from 'next/link';
-import { ShoppingCart } from 'lucide-react';
+import { ShoppingCart, Store } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { useCart } from '@/app/context/CartContext';
 import { useToast } from '@/app/context/ToastContext';
+import { getVendorName } from '@/utils/vendorUtils';
 
 interface ProductCardProps {
   product: any;
@@ -16,6 +18,21 @@ interface ProductCardProps {
 export default function ProductCard({ product, variant = 'compact' }: ProductCardProps) {
   const { addToCart, isItemInCart } = useCart();
   const { addToast } = useToast();
+  const [vendorName, setVendorName] = useState<string>('Loading...');
+
+  // Fetch vendor name on component mount
+  useEffect(() => {
+    const fetchVendor = async () => {
+      const name = await getVendorName(product.vendorId);
+      setVendorName(name);
+    };
+
+    if (product.vendorId) {
+      fetchVendor();
+    } else {
+      setVendorName('OpenMart');
+    }
+  }, [product.vendorId]);
 
   // Return null if product is invalid
   if (!product || !product.name || !product.price) {
@@ -92,6 +109,17 @@ export default function ProductCard({ product, variant = 'compact' }: ProductCar
                 {formatPrice(product.oldPrice)}
               </div>
             )}
+          </div>
+
+          {/* Sold by Vendor - Horizontal */}
+          <div className="text-xs text-slate-600 dark:text-slate-400 mb-3 pb-3 border-b border-slate-200 dark:border-slate-800 flex items-center gap-1">
+            <span className="font-medium">Sold by:</span>
+            <div className="flex items-center gap-1">
+              <Store className="w-3 h-3" />
+              <span className="font-semibold text-slate-900 dark:text-white truncate">
+                {vendorName}
+              </span>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-2 mt-auto">
@@ -172,6 +200,17 @@ export default function ProductCard({ product, variant = 'compact' }: ProductCar
                   {formatPrice(product.oldPrice)}
                 </span>
               )}
+            </div>
+          </div>
+
+          {/* Sold by Vendor - Horizontal */}
+          <div className="text-xs text-slate-600 dark:text-slate-400 mb-4 pb-4 border-b border-slate-200 dark:border-slate-800 flex items-center gap-2">
+            <span className="font-medium">Sold by:</span>
+            <div className="flex items-center gap-1">
+              <Store className="w-4 h-4" />
+              <span className="font-semibold text-slate-900 dark:text-white truncate text-sm">
+                {vendorName}
+              </span>
             </div>
           </div>
 

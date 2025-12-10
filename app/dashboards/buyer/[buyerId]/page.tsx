@@ -41,24 +41,22 @@ export default function BuyerDashboard() {
     const fetchSession = async () => {
       try {
         console.log('[DASHBOARD] fetchSession called for buyerId:', buyerId);
-        const response = await fetch('/api/auth/session', {
-          credentials: 'include', // IMPORTANT: Include cookies in the request
-        });
-        const data = await response.json();
-        console.log('[DASHBOARD] Session data:', data);
-        
-        if (!data.buyer) {
+        // Get user data from localStorage
+        const storedBuyer = localStorage.getItem('buyer');
+        if (!storedBuyer) {
           // Not logged in, redirect to home
-          console.log('[DASHBOARD] No buyer in session, redirecting to home');
+          console.log('[DASHBOARD] No buyer in localStorage, redirecting to home');
           router.push('/');
           return;
         }
 
-        console.log('[DASHBOARD] Buyer found:', data.buyer.email);
-        console.log('[DASHBOARD] Checking authorization: buyer._id =', data.buyer._id, 'buyerId =', buyerId);
+        const data = JSON.parse(storedBuyer);
+        console.log('[DASHBOARD] Buyer data:', data);
+        
+        console.log('[DASHBOARD] Checking authorization: buyer._id =', data._id, 'buyerId =', buyerId);
 
         // SECURITY: Verify that the logged-in user's ID matches the requested buyerId
-        if (data.buyer._id !== buyerId) {
+        if (data._id !== buyerId) {
           console.error('[DASHBOARD] Authorization failed: user trying to access different dashboard');
           setError('Unauthorized: You cannot access another user\'s dashboard');
           setTimeout(() => router.push('/'), 2000);
@@ -67,13 +65,12 @@ export default function BuyerDashboard() {
         
         console.log('[DASHBOARD] Authorization successful, setting buyer');
         console.log('[DASHBOARD] Buyer data:', {
-          firstName: data.buyer.firstName,
-          lastName: data.buyer.lastName,
-          email: data.buyer.email,
-          phone: data.buyer.phone,
-          _id: data.buyer._id,
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+          _id: data._id,
         });
-        setBuyer(data.buyer);
+        setBuyer(data);
       } catch (error) {
         console.error('[DASHBOARD] Error fetching session:', error);
         router.push('/');
@@ -132,7 +129,7 @@ export default function BuyerDashboard() {
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
+      localStorage.removeItem('buyer');
     } catch (error) {
       console.error('Logout error:', error);
     }

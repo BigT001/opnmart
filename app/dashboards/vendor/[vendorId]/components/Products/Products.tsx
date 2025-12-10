@@ -57,11 +57,11 @@ export default function Products() {
     const loadProducts = async () => {
       try {
         setIsLoadingProducts(true);
-        const response = await fetch(`/api/products?vendorId=${vendorId}`);
+        const response = await fetch(`http://localhost:3001/products?vendor=${vendorId}`);
         if (response.ok) {
           const data = await response.json();
-          console.log('Products loaded:', data.products);
-          setProducts(data.products || []);
+          console.log('Products loaded:', data);
+          setProducts(data || []);
         }
       } catch (error) {
         console.error('Failed to load products:', error);
@@ -253,7 +253,7 @@ export default function Products() {
       });
 
       // Send to API
-      const response = await fetch('/api/products', {
+      const response = await fetch('http://localhost:3001/products', {
         method: 'POST',
         body: formDataToSend,
       });

@@ -7,9 +7,10 @@ interface SignUpModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSwitchToLogin: () => void;
+  onSignUpSuccess?: (email: string, token: string) => void;
 }
 
-export default function SignUpModal({ isOpen, onClose, onSwitchToLogin }: SignUpModalProps) {
+export default function SignUpModal({ isOpen, onClose, onSwitchToLogin, onSignUpSuccess }: SignUpModalProps) {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -85,41 +86,82 @@ export default function SignUpModal({ isOpen, onClose, onSwitchToLogin }: SignUp
 
     setLoading(true);
     try {
-      console.log('[SIGNUP MODAL] Submitting signup form...');
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+      const dataToSubmit = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        phonePrefix: formData.phonePrefix,
+        phone: formData.phone,
+        password: formData.password,
+        confirmPassword: formData.confirmPassword,
+      };
+
+      console.log('[SIGNUP MODAL] Form data being submitted:', {
+        email: dataToSubmit.email,
+        firstName: dataToSubmit.firstName,
+        lastName: dataToSubmit.lastName,
+        phone: `${dataToSubmit.phonePrefix}${dataToSubmit.phone}`,
+        hasPassword: !!dataToSubmit.password,
+        passwordLength: dataToSubmit.password?.length || 0,
       });
 
-      const data = await response.json();
-      console.log('[SIGNUP MODAL] Signup response status:', response.status);
+      // Call NestJS backend directly (skip Next.js API route)
+      const response = await fetch('http://localhost:3001/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: dataToSubmit.email,
+          password: dataToSubmit.password,
+          firstName: dataToSubmit.firstName,
+          lastName: dataToSubmit.lastName,
+          phonePrefix: dataToSubmit.phonePrefix,
+          phone: dataToSubmit.phone,
+          role: 'buyer',
+        }),
+      });
+
+      console.log('[SIGNUP MODAL] Raw response status:', response.status);
+      console.log('[SIGNUP MODAL] Raw response ok:', response.ok);
+      
+      let data;
+      try {
+        data = await response.json();
+        console.log('[SIGNUP MODAL] Parsed response data:', data);
+      } catch (parseError) {
+        console.error('[SIGNUP MODAL] Failed to parse JSON response:', parseError);
+        setErrors({ submit: 'Server returned invalid response' });
+        setLoading(false);
+        return;
+      }
 
       if (!response.ok) {
-        console.error('[SIGNUP MODAL] Signup failed:', data.error);
-        setErrors({ submit: data.error || 'Failed to create account' });
+        console.error('[SIGNUP MODAL] Signup failed with status', response.status, ':', data.error || data);
+        setErrors({ submit: data.error || data.message || 'Failed to create account' });
         setLoading(false);
         return;
       }
 
       console.log('[SIGNUP MODAL] Signup successful!');
-      setSuccessMessage('Account created successfully! Redirecting to login...');
+      
+      // Store the token and user info
+      const token = data.access_token;
+      const email = formData.email;
+      localStorage.setItem('token', token);
+      localStorage.setItem('buyer', JSON.stringify(data.user));
+      
+      console.log('[SIGNUP MODAL] Stored token and user to localStorage');
+      console.log('[SIGNUP MODAL] Verification email already sent with signup');
+      
+      // Show success message
+      setSuccessMessage('Account created! Check your email for the verification code...');
       setLoading(false);
       
-      setTimeout(() => {
-        onClose();
-        onSwitchToLogin();
-        setFormData({
-          firstName: '',
-          lastName: '',
-          email: '',
-          phonePrefix: '+234',
-          phone: '',
-          password: '',
-          confirmPassword: '',
-        });
-        setSuccessMessage('');
-      }, 2000);
+      // Trigger verification modal
+      if (onSignUpSuccess) {
+        setTimeout(() => {
+          onSignUpSuccess(email, token);
+        }, 1500);
+      }
     } catch (error) {
       console.error('[SIGNUP MODAL] Error:', error);
       setErrors({ submit: 'An error occurred. Please try again.' });
@@ -188,14 +230,13 @@ export default function SignUpModal({ isOpen, onClose, onSwitchToLogin }: SignUp
           {/* Name Fields */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold mb-2">First Name</label>
               <input
                 type="text"
                 name="firstName"
                 value={formData.firstName}
                 onChange={handleChange}
-                placeholder="First name"
-                className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-green-500"
+                placeholder="First Name"
+                className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:outline-none focus:border-green-500 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
               />
               {errors.firstName && (
                 <p className="text-red-500 text-xs mt-1">{errors.firstName}</p>
@@ -203,14 +244,13 @@ export default function SignUpModal({ isOpen, onClose, onSwitchToLogin }: SignUp
             </div>
 
             <div>
-              <label className="block text-sm font-semibold mb-2">Last Name</label>
               <input
                 type="text"
                 name="lastName"
                 value={formData.lastName}
                 onChange={handleChange}
-                placeholder="last name"
-                className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-green-500"
+                placeholder="Last Name"
+                className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:outline-none focus:border-green-500 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
               />
               {errors.lastName && (
                 <p className="text-red-500 text-xs mt-1">{errors.lastName}</p>
@@ -220,14 +260,13 @@ export default function SignUpModal({ isOpen, onClose, onSwitchToLogin }: SignUp
 
           {/* Email */}
           <div>
-            <label className="block text-sm font-semibold mb-2">Email</label>
             <input
               type="email"
               name="email"
               value={formData.email}
               onChange={handleChange}
-              placeholder="youremail@example.com"
-              className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-green-500"
+              placeholder="Email Address"
+              className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:outline-none focus:border-green-500 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
             />
             {errors.email && (
               <p className="text-red-500 text-xs mt-1">{errors.email}</p>
@@ -236,13 +275,12 @@ export default function SignUpModal({ isOpen, onClose, onSwitchToLogin }: SignUp
 
           {/* Phone Number with Country Code */}
           <div>
-            <label className="block text-sm font-semibold mb-2">Phone Number</label>
             <div className="flex gap-2">
               <select
                 name="phonePrefix"
                 value={formData.phonePrefix}
                 onChange={handleChange}
-                className="px-3 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-green-500 font-semibold"
+                className="px-3 py-3 rounded-lg border-2 border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:outline-none focus:border-green-500 font-semibold text-gray-900 dark:text-white"
               >
                 {phoneCountries.map((country) => (
                   <option key={country.code} value={country.code}>
@@ -255,9 +293,9 @@ export default function SignUpModal({ isOpen, onClose, onSwitchToLogin }: SignUp
                 name="phone"
                 value={formData.phone}
                 onChange={handleChange}
-                placeholder="8012345678"
+                placeholder="Phone Number"
                 maxLength={10}
-                className="flex-1 px-4 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="flex-1 px-4 py-3 rounded-lg border-2 border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:outline-none focus:border-green-500 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
               />
             </div>
             {errors.phone && (
@@ -270,20 +308,19 @@ export default function SignUpModal({ isOpen, onClose, onSwitchToLogin }: SignUp
 
           {/* Password */}
           <div>
-            <label className="block text-sm font-semibold mb-2">Password</label>
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                placeholder="SecurePass123!"
-                className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-green-500"
+                placeholder="Password"
+                className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:outline-none focus:border-green-500 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-2.5 text-gray-500"
+                className="absolute right-3 top-3 text-gray-500"
               >
                 {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
               </button>
@@ -295,20 +332,19 @@ export default function SignUpModal({ isOpen, onClose, onSwitchToLogin }: SignUp
 
           {/* Confirm Password */}
           <div>
-            <label className="block text-sm font-semibold mb-2">Confirm Password</label>
             <div className="relative">
               <input
                 type={showConfirmPassword ? 'text' : 'password'}
                 name="confirmPassword"
                 value={formData.confirmPassword}
                 onChange={handleChange}
-                placeholder="SecurePass123!"
-                className="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-green-500"
+                placeholder="Confirm Password"
+                className="w-full px-4 py-3 rounded-lg border-2 border-gray-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 focus:outline-none focus:border-green-500 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
               />
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-2.5 text-gray-500"
+                className="absolute right-3 top-3 text-gray-500"
               >
                 {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
               </button>
